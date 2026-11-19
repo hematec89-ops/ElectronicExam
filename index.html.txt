@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1F4E78">
+<title>زيارات ميدانية</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Segoe UI",Tahoma,sans-serif;background:#f0f4f8;color:#1f2a37;padding-bottom:150px}
+  header{position:sticky;top:0;z-index:10;background:#1F4E78;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  header h1{font-size:17px;margin:0;flex:1}
+  .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.15)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#4ade80}
+  .dot.off{background:#f87171}
+
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  .card{background:#fff;margin:12px;padding:14px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .card h2{font-size:14px;color:#1F4E78;margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid #e5e7eb}
+  label{display:block;font-size:12px;color:#4b5563;margin:8px 0 4px}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:2px solid #2E75B6;border-color:transparent}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .item{border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px;background:#fafbfc}
+  .item-text{font-size:13px;line-height:1.5;margin-bottom:8px}
+  .item-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .item-btns button{padding:8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+  .item-btns button.sel-ok{background:#C6EFCE;border-color:#006100;color:#006100}
+  .item-btns button.sel-no{background:#FFC7CE;border-color:#9C0006;color:#9C0006}
+  .item-btns button.sel-na{background:#e5e7eb;border-color:#6b7280;color:#374151}
+  .item .note{margin-top:8px;font-size:13px}
+
+  /* نتائج البحث */
+  .report-row{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:6px;cursor:pointer}
+  .report-row:hover{background:#f7fafc}
+  .report-row .rr-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .report-row .rr-no{font-weight:bold;color:#1F4E78;font-size:14px}
+  .report-row .rr-meta{font-size:12px;color:#4b5563;line-height:1.6}
+  .report-row .rr-stats{font-size:12px;color:#374151}
+  .report-row .rr-stats span{margin-inline-end:10px}
+  .ok-color{color:#006100;font-weight:bold}
+  .no-color{color:#9C0006;font-weight:bold}
+  .rr-actions{display:flex;gap:6px;justify-content:flex-end}
+  .rr-actions button{padding:6px 10px;border:none;border-radius:8px;font-size:12px;cursor:pointer}
+  .rr-actions .btn-eye{background:#e0e7ff;color:#3730a3}
+  .rr-actions .btn-print{background:#dbeafe;color:#1e40af}
+
+  /* الأزرار السفلية */
+  .actions{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;box-shadow:0 -2px 10px rgba(0,0,0,.08);z-index:20;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+  .actions button{padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+  .btn-primary{background:#1F4E78;color:#fff}
+  .btn-sync{background:#2E75B6;color:#fff}
+  .btn-print-main{background:#0f766e;color:#fff}
+  .btn-primary:disabled,.btn-sync:disabled{background:#cbd5e1;cursor:not-allowed}
+
+  .badge{display:inline-block;min-width:20px;padding:1px 7px;background:#dc2626;color:#fff;border-radius:999px;font-size:11px;margin-right:6px;text-align:center}
+
+  /* شريط التبويبات */
+  .bottom-nav{position:fixed;bottom:60px;left:0;right:0;background:#fff;display:grid;grid-template-columns:1fr 1fr;box-shadow:0 -1px 3px rgba(0,0,0,.08);z-index:19}
+  .bottom-nav button{background:none;border:none;padding:12px 0;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;border-top:3px solid transparent}
+  .bottom-nav button.active{color:#1F4E78;border-top-color:#1F4E78}
+
+  .toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99;max-width:90%}
+  .toast.show{opacity:1}
+
+  .pending-list{font-size:12px;color:#6b7280}
+  .pending-list div{padding:6px;border-bottom:1px solid #f3f4f6}
+
+  .empty{text-align:center;color:#9ca3af;padding:20px;font-size:13px}
+
+  .filter-toggle{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:#374151}
+  .filter-toggle input{width:auto;transform:scale(1.2)}
+
+  /* ============ الطباعة ============ */
+  #printArea{display:none}
+
+  @media print {
+    body{padding:0;margin:0;background:#fff}
+    body > *:not(#printArea){display:none !important}
+    #printArea{display:block !important}
+
+    @page{size:A4 portrait;margin:12mm}
+
+    .print-page{page-break-after:always;font-size:10pt;color:#000;direction:rtl;padding:0;font-family:"Segoe UI",Tahoma,sans-serif}
+    .print-page:last-child{page-break-after:auto}
+
+    .print-header{text-align:center;border-bottom:2px solid #1F4E78;padding-bottom:6px;margin-bottom:10px}
+    .print-header h1{margin:0;font-size:15pt;color:#1F4E78}
+    .print-header .meta{font-size:9pt;color:#555;margin-top:4px}
+
+    .section-title{font-size:11pt;font-weight:bold;color:#1F4E78;margin:10px 0 4px;border-right:4px solid #2E75B6;padding-right:8px}
+
+    .print-page table{width:100%;border-collapse:collapse;margin:5px 0}
+    .print-page table td,.print-page table th{border:1px solid #666;padding:4px 6px;font-size:9pt;text-align:right;vertical-align:top}
+    .print-page table th{background:#e8eef5 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+    .print-page .ok-color{color:#006100;font-weight:bold}
+    .print-page .no-color{color:#9C0006;font-weight:bold}
+
+    .print-footer{margin-top:20px;display:flex;justify-content:space-between;gap:20px;font-size:10pt}
+    .print-footer > div{border-top:1px solid #333;padding-top:4px;flex:1;text-align:center}
+
+    .print-summary-box{display:flex;gap:8px;margin:8px 0}
+    .print-summary-box div{flex:1;border:1px solid #666;border-radius:6px;padding:6px;text-align:center;font-size:10pt;background:#fafbfc !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    
+    .print-extra-box{border:1px solid #666;padding:8px;font-size:10pt;margin-bottom:10px;min-height:40px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>زيارات ميدانية</h1>
+  <span class="status">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">متصل</span>
+  </span>
+</header>
+
+<!-- ==================== تبويب 1: التسجيل ==================== -->
+<main id="tab-form" class="tab-content active">
+
+  <div class="card">
+    <h2>بيانات الزيارة</h2>
+    <div class="row">
+      <div><label>اسم الزائر</label>
+        <select id="visitName">
+          <option value="">— اختر الزائر —</option>
+        </select>
+      </div>
+      <div><label>الوظيفة</label>
+        <select id="visitJob">
+          <option>منسق/ة ميداني/ة</option>
+          <option>مشرف تربوي</option>
+          <option>مشرف نفسي</option>
+          <option>مدير مشروع</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div><label>تاريخ الزيارة</label><input type="date" id="visitDate"></div>
+      <div><label>الفترة</label>
+        <div class="row">
+          <input type="time" id="fromTime">
+          <input type="time" id="toTime">
+        </div>
+      </div>
+    </div>
+    <label>اسم المشروع</label>
+    <select id="projectName"></select>
+    <div class="row">
+      <div><label>المركز / اسم الموقع</label>
+        <select id="siteName">
+          <option value="">— اختر المركز —</option>
+        </select>
+      </div>
+      <div><label>العنوان</label><input id="siteAddress"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>بنود التحقق (29 بندًا)</h2>
+    <div id="items"></div>
+  </div>
+
+  <div class="card">
+    <h2>الملاحظات والإجراءات</h2>
+    <label>الصعوبات والمعيقات:</label>
+    <textarea id="difficulties" rows="3" placeholder="اكتب الصعوبات إن وجدت..."></textarea>
+    <label>الإجراء المطلوب من المؤسسة:</label>
+    <textarea id="requiredAction" rows="3" placeholder="اكتب الإجراء المطلوب..."></textarea>
+  </div>
+
+  <div class="card">
+    <h2>الحضور</h2>
+    <div class="row">
+      <div><label>الحضور الصباحي</label><input type="number" min="0" id="attAM"></div>
+      <div><label>الحضور المسائي</label><input type="number" min="0" id="attPM"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>التذييل</h2>
+    <label>اسم المنسق الميداني</label><input id="coordinatorName">
+    <label>التوقيع (نص)</label><input id="signature">
+    <label>تاريخ تعبئة التقرير</label><input type="date" id="reportDate">
+  </div>
+
+  <div class="card">
+    <h2>السجلات المحفوظة محليًا (<span id="pendingCount">0</span> معلّق)</h2>
+    <div id="pendingList" class="pending-list"></div>
+  </div>
+
+</main>
+
+<!-- ==================== تبويب 2: التقارير والطباعة ==================== -->
+<main id="tab-reports" class="tab-content">
+
+  <div class="card">
+    <h2>فلترة التقارير</h2>
+    <label>المركز / اسم الموقع</label>
+    <select id="filterCenter"><option value="">— كل المراكز —</option></select>
+
+    <div class="row">
+      <div><label>اليوم</label><input type="date" id="filterDay"></div>
+      <div><label>الشهر</label><input type="month" id="filterMonth"></div>
+    </div>
+
+    <button id="btnSearch" class="btn-primary" style="width:100%;margin-top:12px">🔍 بحث</button>
+
+    <label class="filter-toggle">
+      <input type="checkbox" id="includeItems">
+      تضمين تفاصيل البنود في الطباعة (29 بندًا لكل تقرير)
+    </label>
+  </div>
+
+  <div class="card">
+    <h2>النتائج (<span id="resultsCount">0</span> تقرير)</h2>
+    <div id="resultsList"><div class="empty">اضغط "بحث" لعرض التقارير</div></div>
+  </div>
+
+</main>
+
+<!-- ==================== أزرار سفلية ==================== -->
+<nav class="bottom-nav" id="bottomNav">
+  <button data-tab="form" class="active">📝 تسجيل زيارة</button>
+  <button data-tab="reports">📊 التقارير</button>
+</nav>
+
+<div class="actions" id="actionBar">
+  <button class="btn-primary" id="btnSave">💾 حفظ محليًا</button>
+  <button class="btn-sync" id="btnSync">☁️ مزامنة <span class="badge" id="syncBadge">0</span></button>
+</div>
+
+<!-- نسخة للطباعة -->
+<div id="printArea"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/*************************************************************
+ * 1) إعدادات
+ *************************************************************/
+const API_URL = 'https://script.google.com/macros/s/AKfycbwPiKRJqQKXs-kO7vHURVSkPjQnikcSgNKtSExX6l_WXfT7g0r12XF8Q6K2-P7z6uWY/exec';
+const CACHE_KEY_CENTERS  = 'cache_centers';
+const CACHE_KEY_REPORTS  = 'cache_reports';
+
+const ITEMS = [
+  'تم التحقق من وجود لوحة تعريفية بالمشروع والممول',
+  'توفر السجلات الإدارية (دفتر الحضور، خطة العمل الأسبوعية، دفتر التحضير)',
+  'توفر نسخة حديثة من خطة النشاطات في الموقع',
+  'حضور الطاقم كاملًا في وقت الزيارة',
+  'بدأت الجلسات الصفية/النشاطات في الوقت المحدد',
+  'الأنشطة الصفية تسير وفق الحصص المخططة',
+  'الأنشطة التعليمية تتوافق مع الحزمة الوزارية',
+  'مدى ملاءمة البنية التحتية للأطفال ذوي الإعاقة (ممرات، مراحيض، مداخل، أثاث)',
+  'توفر أنشطة تعليمية/نفسية/ترفيهية ملائمة للأطفال ذوي الإعاقة',
+  'تم رصد مؤشرات على دمج الأطفال ذوي الإعاقة بشكل فعلي في الأنشطة',
+  'تنفيذ أنشطة ترفيهية أو فنية للأطفال خلال الأسبوع',
+  'عقد لقاء واحد على الأقل مع أولياء الأمور خلال الأسبوع',
+  'توفّر بيئة تعليمية آمنة (سلامة – تهوية – نظافة)',
+  'تم التشاور مع المشرف التربوي أثناء الزيارة',
+  'تم التشاور مع المشرف النفسي أثناء الزيارة',
+  'تم مراجعة دفاتر الأطفال/الأنشطة المنفذة',
+  'تم التحقق من مطابقة الفئات المستهدفة للمشروع',
+  'جودة تقديم الخدمة التعليمية والدعم النفسي كانت مناسبة',
+  'سلوك وتفاعل الطاقم مع الأطفال ملائم ومحترم',
+  'توفر القرطاسية والمواد التعليمية الأساسية',
+  'تتبع واضح لممارسات حماية الطفل',
+  'وجود آلية تقديم شكاوى واضحة ومفعلة',
+  'تم تدوين أي ملاحظات من الفريق أو المستفيدين',
+  'الأنشطة المنفذة تتطابق مع الأنشطة المخطط لها',
+  'تم توثيق الجلسات/الأنشطة بالصور أو السجلات',
+  'مغادرة المنسق بعد انتهاء ملاحظاته دون معوقات',
+  'مطابقة الحضور الفعلي للأطفال مع العدد المسجل',
+  'البيئة التربوية مناسبة والكراسي والطاولات متجانسة داخل القاعات',
+  'التأكد من توثيق أسباب الغياب ونتائج الاتصالات في دفتر الغياب'
+];
+
+/*************************************************************
+ * 2) IndexedDB (السجلات المحلية المعلّقة)
+ *************************************************************/
+const DB_NAME = 'visits_db';
+const DB_VER  = 1;
+let _db = null;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('visits')) {
+        const st = d.createObjectStore('visits', {keyPath:'localId', autoIncrement:true});
+        st.createIndex('status', 'status');
+      }
+    };
+    req.onsuccess = e => { _db = e.target.result; res(_db); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+function dbAdd(o){return new Promise((res,rej)=>{const tx=_db.transaction('visits','readwrite');const r=tx.objectStore('visits').add(o);r.onsuccess=()=>res(r.result);r.onerror=e=>rej(e.target.error);});}
+function dbPut(o){return new Promise((res,rej)=>{const tx=_db.transaction('visits','readwrite');const r=tx.objectStore('visits').put(o);r.onsuccess=()=>res(r.result);r.onerror=e=>rej(e.target.error);});}
+function dbGetAll(){return new Promise((res,rej)=>{const tx=_db.transaction('visits','readonly');const r=tx.objectStore('visits').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=e=>rej(e.target.error);});}
+
+/*************************************************************
+ * 3) أدوات واجهة
+ *************************************************************/
+let _toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.toggle('active', el.id === 'tab-'+tab));
+  document.querySelectorAll('#bottomNav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+
+  const act = document.getElementById('actionBar');
+  if (tab === 'form') {
+    act.style.display = 'grid';
+    act.innerHTML = `
+      <button class="btn-primary" id="btnSave">💾 حفظ محليًا</button>
+      <button class="btn-sync" id="btnSync">☁️ مزامنة <span class="badge" id="syncBadge">0</span></button>
+    `;
+    document.getElementById('btnSave').addEventListener('click', saveLocal);
+    document.getElementById('btnSync').addEventListener('click', syncAll);
+    updateSyncBadge();
+  } else {
+    act.style.display = 'grid';
+    act.innerHTML = `
+      <button class="btn-sync" id="btnRefresh">🔄 تحديث القائمة</button>
+      <button class="btn-print-main" id="btnPrint">🖨️ طباعة / حفظ PDF</button>
+    `;
+    document.getElementById('btnRefresh').addEventListener('click', () => searchReports(false));
+    document.getElementById('btnPrint').addEventListener('click', () => doPrint(false));
+  }
+}
+
+/*************************************************************
+ * 4) تبويب التسجيل — البناء والحفظ والمزامنة
+ *************************************************************/
+function renderItems(){
+  const c = document.getElementById('items');
+  c.innerHTML = ITEMS.map((txt,i)=>`
+    <div class="item" data-i="${i}">
+      <div class="item-text">${i+1}. ${txt}</div>
+      <div class="item-btns">
+        <button type="button" data-val="✔">✔ تم</button>
+        <button type="button" data-val="✘">✘ لم يتم</button>
+        <button type="button" data-val="لا ينطبق">— لا ينطبق</button>
+      </div>
+      <input type="text" class="note" placeholder="ملاحظة (اختياري)">
+    </div>
+  `).join('');
+
+  c.querySelectorAll('.item').forEach(el=>{
+    el.querySelectorAll('.item-btns button').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        el.querySelectorAll('.item-btns button').forEach(b=>b.classList.remove('sel-ok','sel-no','sel-na'));
+        const v = btn.dataset.val;
+        btn.classList.add(v==='✔'?'sel-ok':v==='✘'?'sel-no':'sel-na');
+        el.dataset.value = v;
+      });
+    });
+  });
+}
+
+function loadSetupData(data){
+  // 1. ملء قائمة المشاريع (مستقلة)
+  const projSel = document.getElementById('projectName');
+  projSel.innerHTML = '<option value="">— اختر المشروع —</option>' +
+    (data.projects||[]).map(p=>`<option value="${p.name}" data-no="${p.no||''}">${p.name}</option>`).join('');
+  
+  // 2. ملء قائمة المراكز (مستقلة)
+  const siteSel = document.getElementById('siteName');
+  siteSel.innerHTML = '<option value="">— اختر المركز —</option>' + 
+    (data.sites||[]).map(s => `<option value="${s}">${s}</option>`).join('');
+
+  // 3. ملء قائمة العناوين (مستقلة)
+  const addrSel = document.getElementById('siteAddress');
+  if(addrSel) {
+      addrSel.innerHTML = '<option value="">— اختر العنوان —</option>' + 
+        (data.addresses||[]).map(a => `<option value="${a}">${a}</option>`).join('');
+  }
+
+  // 4. ملء قائمة الزوار (مستقلة)
+  const visitSel = document.getElementById('visitName');
+  visitSel.innerHTML = '<option value="">— اختر الزائر —</option>' + 
+    (data.visitors||[]).map(v => `<option value="${v}">${v}</option>`).join('');
+
+  // التعبئة التلقائية (عند اختيار الزائر من القائمة)
+  visitSel.addEventListener('change', function() {
+      document.getElementById('signature').value = this.value;
+      document.getElementById('coordinatorName').value = this.value;
+  });
+}
+  
+function collectForm(){
+  const items = Array.from(document.querySelectorAll('.item')).map(el=>({
+    result: el.dataset.value || '',
+    note:   el.querySelector('.note').value.trim()
+  }));
+  return {
+    visitName:  document.getElementById('visitName').value.trim(),
+    visitJob:   document.getElementById('visitJob').value,
+    visitDate:  document.getElementById('visitDate').value,
+    fromTime:   document.getElementById('fromTime').value,
+    toTime:     document.getElementById('toTime').value,
+    projectName:document.getElementById('projectName').value,
+    projectNo:  (document.getElementById('projectName').selectedOptions[0]||{}).dataset?.no || '',
+    siteName:   document.getElementById('siteName').value.trim(),
+    siteAddress:document.getElementById('siteAddress').value.trim(),
+    items,
+    difficulties: document.getElementById('difficulties').value.trim(),
+    requiredAction: document.getElementById('requiredAction').value.trim(),
+    attAM:      document.getElementById('attAM').value,
+    attPM:      document.getElementById('attPM').value,
+    coordinatorName: document.getElementById('coordinatorName').value.trim(),
+    signature:  document.getElementById('signature').value.trim(),
+    reportDate: document.getElementById('reportDate').value || new Date().toISOString().slice(0,10)
+  };
+}
+
+function resetForm(){
+  document.querySelectorAll('input,select,textarea').forEach(el=>{
+    if (el.tagName==='SELECT') el.selectedIndex = 0;
+    else if (el.type!=='date' && el.type!=='time' && el.type!=='checkbox') el.value='';
+  });
+  document.querySelectorAll('.item').forEach(el=>{
+    el.dataset.value = '';
+    el.querySelector('.note').value = '';
+    el.querySelectorAll('.item-btns button').forEach(b=>b.classList.remove('sel-ok','sel-no','sel-na'));
+  });
+  document.getElementById('reportDate').value = new Date().toISOString().slice(0,10);
+}
+
+async function saveLocal(){
+  const visit = collectForm();
+  if (!visit.visitName) return toast('أدخل اسم الزائر');
+  if (!visit.visitDate) return toast('حدد تاريخ الزيارة');
+
+  visit.status = 'pending';
+  visit.createdAt = new Date().toISOString();
+  await dbAdd(visit);
+  toast('تم الحفظ محليًا ✓');
+  resetForm();
+  await refreshPending();
+  if (navigator.onLine) syncAll();
+}
+
+let _syncing = false;
+async function syncAll(){
+  if (_syncing || !navigator.onLine) return;
+  _syncing = true;
+  const btn = document.getElementById('btnSync');
+  if (btn) btn.disabled = true;
+
+  try {
+    const all = await dbGetAll();
+    const pending = all.filter(v=>v.status==='pending');
+    let ok=0, fail=0;
+
+    for (const v of pending){
+      try {
+        const resp = await fetch(API_URL, {
+          method:'POST',
+          headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body: JSON.stringify({action:'saveVisit', visit:v})
+        });
+        const result = await resp.json();
+        if (result.ok) {
+          v.status = 'synced';
+          v.syncedAt = new Date().toISOString();
+          v.reportNo = result.reportNo;
+          await dbPut(v);
+          ok++;
+        } else fail++;
+      } catch(e){ fail++; console.warn(e); }
+    }
+
+    if (ok) toast(`تمت مزامنة ${ok}${fail?' — فشل '+fail:''}`);
+    else if (fail) toast('فشلت المزامنة، ستعاد المحاولة');
+    else toast('لا توجد سجلات جديدة');
+  } finally {
+    _syncing = false;
+    if (btn) btn.disabled = !navigator.onLine;
+    await refreshPending();
+  }
+}
+
+async function refreshPending(){
+  const all = await dbGetAll();
+  const pending = all.filter(v=>v.status==='pending');
+  const el = document.getElementById('pendingCount');
+  if (el) el.textContent = pending.length;
+  updateSyncBadge();
+
+  const box = document.getElementById('pendingList');
+  if (!box) return;
+  if (pending.length === 0) box.innerHTML = '<div style="padding:8px;color:#9ca3af">لا توجد سجلات معلّقة ✓</div>';
+  else box.innerHTML = pending.map(v=>`
+    <div><strong>${v.visitName||'—'}</strong> — ${v.visitDate||''} — ${v.siteName||''}
+    <span style="color:#9ca3af">(${new Date(v.createdAt).toLocaleString('ar-EG')})</span></div>
+  `).join('');
+}
+
+function updateSyncBadge(){
+  dbGetAll().then(all=>{
+    const n = all.filter(v=>v.status==='pending').length;
+    const b = document.getElementById('syncBadge');
+    if (b) b.textContent = n;
+  });
+}
+
+/*************************************************************
+ * 5) تبويب التقارير — البحث والفلاتر
+ *************************************************************/
+let _lastReports = [];
+
+async function loadCenters(){
+  const sel = document.getElementById('filterCenter');
+  let centers = [];
+
+  try { centers = JSON.parse(localStorage.getItem(CACHE_KEY_CENTERS) || '[]'); } catch(e){}
+
+  if (navigator.onLine){
+    try {
+      const r = await fetch(API_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({action:'getCenters'})
+      });
+      const data = await r.json();
+      if (data.ok && Array.isArray(data.centers)) {
+        centers = data.centers;
+        localStorage.setItem(CACHE_KEY_CENTERS, JSON.stringify(centers));
+      }
+    } catch(e){ console.warn('centers offline', e); }
+  }
+
+  sel.innerHTML = '<option value="">— كل المراكز —</option>' +
+    centers.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+}
+
+async function searchReports(showToast = true){
+  const center = document.getElementById('filterCenter').value;
+  const day    = document.getElementById('filterDay').value;
+  const month  = document.getElementById('filterMonth').value;
+
+  if (!navigator.onLine){
+    const cached = readReportsCache();
+    if (cached) {
+      _lastReports = cached;
+      renderResults(cached);
+      if (showToast) toast('أنت غير متصل — عرض آخر نتائج محفوظة');
+      return;
+    }
+    return toast('لا يوجد اتصال ولا نتائج محفوظة');
+  }
+
+  const btn = document.getElementById('btnSearch');
+  btn.disabled = true; btn.textContent = '... جاري البحث';
+
+  try {
+    const r = await fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        action:'getReports',
+        filters: {center, day, month}
+      })
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error || 'فشل الجلب');
+
+    _lastReports = data.reports || [];
+    saveReportsCache(_lastReports, {center, day, month});
+    renderResults(_lastReports);
+    if (showToast) toast(`عدد النتائج: ${_lastReports.length}`);
+  } catch(e){
+    const cached = readReportsCache();
+    if (cached) {
+      _lastReports = cached;
+      renderResults(cached);
+      toast('تعذّر التحديث — عرض آخر نتائج محفوظة');
+    } else {
+      toast('فشل الجلب: ' + e.message);
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 بحث';
+  }
+}
+
+function readReportsCache(){
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_REPORTS);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj.reports || null;
+  } catch(e){ return null; }
+}
+function saveReportsCache(reports, filters){
+  try {
+    localStorage.setItem(CACHE_KEY_REPORTS, JSON.stringify({
+      reports, filters, savedAt: new Date().toISOString()
+    }));
+  } catch(e){ console.warn('cache too big', e); }
+}
+
+function renderResults(reports){
+  document.getElementById('resultsCount').textContent = reports.length;
+  const box = document.getElementById('resultsList');
+  if (!reports.length) { box.innerHTML = '<div class="empty">لا توجد تقارير مطابقة</div>'; return; }
+
+  box.innerHTML = reports.map((r, idx)=>{
+    const itemSummary = r.items ? r.items.filter(i=>i.result==='✔').length : (r.done || 0);
+    const notDone = r.items ? r.items.filter(i=>i.result==='✘').length : (r.notDone || 0);
+
+    return `
+      <div class="report-row" data-idx="${idx}">
+        <div class="rr-head">
+          <div class="rr-no">${escapeHtml(r.reportNo || '—')}</div>
+          <div class="rr-stats">
+            <span class="ok-color">✔ ${itemSummary}</span>
+            <span class="no-color">✘ ${notDone}</span>
+            <span>· ${r.pct || 0}%</span>
+          </div>
+        </div>
+        <div class="rr-meta">
+          <div>📅 ${escapeHtml(r.visitDate || '')} — ${escapeHtml(r.visitName || '')}</div>
+          <div>🏢 ${escapeHtml(r.siteName || '')} — ${escapeHtml(r.projectName || '')}</div>
+        </div>
+        <div class="rr-actions">
+          <button class="btn-print" data-action="print" data-idx="${idx}">🖨️ طباعة</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  box.querySelectorAll('[data-action="print"]').forEach(b=>{
+    b.addEventListener('click', e=>{
+      e.stopPropagation();
+      const i = Number(b.dataset.idx);
+      printReports([reports[i]], false, true);
+    });
+  });
+}
+
+/*************************************************************
+ * 6) الطباعة
+ *************************************************************/
+function doPrint(){
+  if (!_lastReports.length){
+    searchReports(false).then(()=>{
+      if (_lastReports.length) doPrint();
+      else toast('لا توجد نتائج للطباعة');
+    });
+    return;
+  }
+  const includeItems = document.getElementById('includeItems').checked;
+  printReports(_lastReports, includeItems, false);
+}
+
+function printReports(reports, includeItems, single){
+  if (!reports.length) return toast('لا توجد بيانات للطباعة');
+
+  const center = document.getElementById('filterCenter').value;
+  const day    = document.getElementById('filterDay').value;
+  const month  = document.getElementById('filterMonth').value;
+
+  const batchInfo = !single ? buildBatchHeader(reports.length, center, day, month) : '';
+  const html = reports.map(r => buildReportHTML(r, includeItems)).join('');
+
+  document.getElementById('printArea').innerHTML = batchInfo + html;
+
+  setTimeout(()=>{
+    try { window.print(); }
+    catch(e){
+      toast('تعذّر فتح الطباعة. استخدم "مشاركة ← طباعة" من المتصفح.');
+    }
+  }, 100);
+}
+
+function buildBatchHeader(count, center, day, month){
+  const parts = [`عدد التقارير: ${count}`];
+  if (center) parts.push('المركز: ' + center);
+  if (day)    parts.push('اليوم: ' + day);
+  if (month)  parts.push('الشهر: ' + month);
+  const dateStr = new Date().toLocaleDateString('ar-EG');
+  return `
+    <div class="print-page" style="page-break-after:auto;margin-bottom:15px">
+      <div class="print-header">
+        <h1>تقرير زيارات ميدانية</h1>
+        <div class="meta">${escapeHtml(parts.join(' — '))} — تاريخ الطباعة: ${dateStr}</div>
+      </div>
+    </div>
+  `;
+}
+
+function buildReportHTML(r, includeItems){
+  const items = r.items || [];
+  const doneCount = items.filter(i=>i.result==='✔').length || Number(r.done) || 0;
+  const notDoneCount = items.filter(i=>i.result==='✘').length || Number(r.notDone) || 0;
+  const pct = r.pct || 0;
+
+  const infoTable = `
+    <table>
+      <tr>
+        <th style="width:20%">اسم الزائر</th><td>${escapeHtml(r.visitName||'')}</td>
+        <th style="width:20%">الوظيفة</th><td>${escapeHtml(r.visitJob||'')}</td>
+      </tr>
+      <tr>
+        <th>تاريخ الزيارة</th><td>${escapeHtml(r.visitDate||'')}</td>
+        <th>الفترة</th><td>${escapeHtml((r.fromTime||'') + ' → ' + (r.toTime||''))}</td>
+      </tr>
+      <tr>
+        <th>المركز / الموقع</th><td>${escapeHtml(r.siteName||'')}</td>
+        <th>المشروع</th><td>${escapeHtml(r.projectName||'')}</td>
+      </tr>
+      <tr>
+        <th>العنوان</th><td colspan="3">${escapeHtml(r.siteAddress||'')}</td>
+      </tr>
+    </table>
+  `;
+
+  const summaryBox = `
+    <div class="print-summary-box">
+      <div><strong>تم</strong><br><span style="font-size:14pt;color:#006100">${doneCount}</span></div>
+      <div><strong>لم يتم</strong><br><span style="font-size:14pt;color:#9C0006">${notDoneCount}</span></div>
+      <div><strong>النسبة</strong><br><span style="font-size:14pt;color:#1F4E78">${pct}%</span></div>
+      <div><strong>حضور صباحي</strong><br><span style="font-size:14pt">${escapeHtml(String(r.attAM||0))}</span></div>
+      <div><strong>حضور مسائي</strong><br><span style="font-size:14pt">${escapeHtml(String(r.attPM||0))}</span></div>
+    </div>
+  `;
+
+  let detailsHTML = '';
+  if (includeItems){
+    // تجهيز البنود للترتيب
+    const itemsArray = ITEMS.map((txt, i) => {
+        const it = items[i] || {result:'', note:''};
+        return { text: txt, result: it.result, note: it.note, index: i };
+    });
+
+    // الترتيب: تم (1)، لم يتم (2)، لا ينطبق (3)، فارغ (4)
+    const order = {'✔': 1, '✘': 2, 'لا ينطبق': 3};
+    itemsArray.sort((a, b) => {
+        const valA = order[a.result] || 4;
+        const valB = order[b.result] || 4;
+        return valA - valB;
+    });
+
+    const rows = itemsArray.map((item) => {
+      const cls = item.result==='✔' ? 'ok-color' : item.result==='✘' ? 'no-color' : '';
+      const display = item.result || '—';
+      return `<tr>
+        <td style="text-align:center;width:5%">${item.index+1}</td>
+        <td>${escapeHtml(item.text)}</td>
+        <td style="text-align:center;width:12%" class="${cls}">${escapeHtml(display)}</td>
+        <td style="width:22%">${escapeHtml(item.note||'')}</td>
+      </tr>`;
+    }).join('');
+
+    detailsHTML = `
+      <div class="section-title">تفاصيل البنود (مرتبة حسب النتيجة)</div>
+      <table>
+        <thead><tr><th>#</th><th>البند</th><th>النتيجة</th><th>ملاحظة</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  const extraNotes = `
+    <div class="section-title">الصعوبات والمعيقات</div>
+    <div class="print-extra-box">${escapeHtml(r.difficulties||'—')}</div>
+    
+    <div class="section-title">الإجراء المطلوب من المؤسسة</div>
+    <div class="print-extra-box">${escapeHtml(r.requiredAction||'—')}</div>
+  `;
+
+  const footer = `
+    <div class="print-footer">
+      <div>اسم المنسق: ${escapeHtml(r.coordinatorName||'')}</div>
+      <div>التوقيع: ${escapeHtml(r.signature || r.visitName || '_________________')}</div>
+      <div>تاريخ التعبئة: ${escapeHtml(r.reportDate||'')}</div>
+    </div>
+  `;
+
+  return `
+    <div class="print-page">
+      <div class="print-header">
+        <h1>تقرير زيارة ميدانية</h1>
+        <div class="meta">رقم التقرير: ${escapeHtml(r.reportNo||'—')} — تاريخ الحفظ: ${escapeHtml(r.savedAt||'')}</div>
+      </div>
+      <div class="section-title">بيانات الزيارة</div>
+      ${infoTable}
+      <div class="section-title">ملخص النتائج</div>
+      ${summaryBox}
+      ${detailsHTML}
+      ${extraNotes}
+      ${footer}
+    </div>
+  `;
+}
+
+/*************************************************************
+ * 7) حالة الشبكة
+ *************************************************************/
+function updateStatus(){
+  const online = navigator.onLine;
+  document.getElementById('statusDot').classList.toggle('off', !online);
+  document.getElementById('statusText').textContent = online ? 'متصل' : 'غير متصل';
+  const s = document.getElementById('btnSync');
+  if (s) s.disabled = !online;
+}
+window.addEventListener('online',  ()=>{ updateStatus(); syncAll(); });
+window.addEventListener('offline', updateStatus);
+
+/*************************************************************
+ * 8) أدوات
+ *************************************************************/
+function escapeHtml(s){
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/*************************************************************
+ * 9) التهيئة
+ *************************************************************/
+async function init(){
+  await openDB();
+  renderItems();
+  resetForm();
+  updateStatus();
+  await refreshPending();
+  await loadCenters();
+
+  document.querySelectorAll('#bottomNav button').forEach(b=>{
+    b.addEventListener('click', ()=>switchTab(b.dataset.tab));
+  });
+
+  document.getElementById('btnSave').addEventListener('click', saveLocal);
+  document.getElementById('btnSync').addEventListener('click', syncAll);
+  document.getElementById('btnSearch').addEventListener('click', ()=>searchReports(true));
+  document.getElementById('filterCenter').addEventListener('change', ()=>searchReports(false));
+  document.getElementById('filterDay').addEventListener('change', ()=>searchReports(false));
+  document.getElementById('filterMonth').addEventListener('change', ()=>searchReports(false));
+
+  if (navigator.onLine){
+    try {
+      const r = await fetch(API_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({action:'getSetup'})
+      });
+      const data = await r.json();
+      if (data.ok) loadSetupData(data); // تمرير البيانات كاملة
+    } catch(e){ console.warn('setup load failed', e); }
+  }
+
+  setInterval(()=>{ if (navigator.onLine) syncAll(); }, 60000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
