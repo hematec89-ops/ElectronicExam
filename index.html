@@ -111,7 +111,11 @@ async function handleLogin() {
     const err = document.getElementById('loginError');
     if (!user || !pass) { err.textContent = 'أدخل البيانات'; err.style.display = 'block'; return; }
     try {
-        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'login', username: user, password: pass}) });
+        const r = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 🌟 إضافة الترويسة هنا
+            body: JSON.stringify({action: 'login', username: user, password: pass}) 
+        });
         const data = await r.json();
         if (data.ok) {
             localStorage.setItem('exam_user', JSON.stringify(data.user));
@@ -134,7 +138,11 @@ function logout() { localStorage.removeItem('exam_user'); location.reload(); }
 
 async function loadExams() {
     try {
-        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'getExams'}) });
+        const r = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 🌟 إضافة الترويسة هنا
+            body: JSON.stringify({action: 'getExams'}) 
+        });
         const data = await r.json();
         if (data.ok) {
             const sel = document.getElementById('examSelect');
@@ -150,7 +158,11 @@ async function startExam() {
     currentExamId = opt.value; currentExamName = opt.dataset.name;
     document.getElementById('examTitleDisplay').textContent = currentExamName;
     try {
-        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'getQuestions', examId: currentExamId}) });
+        const r = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 🌟 إضافة الترويسة هنا
+            body: JSON.stringify({action: 'getQuestions', examId: currentExamId}) 
+        });
         const data = await r.json();
         if (data.ok) {
             currentQuestions = data.questions;
@@ -192,7 +204,11 @@ async function submitExam() {
         return { qNo: q.qNo, answer: ans };
     });
     try {
-        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'submitExam', examId: currentExamId, examName: currentExamName, studentName: user.fullName, answers}) });
+        const r = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 🌟 إضافة الترويسة هنا
+            body: JSON.stringify({action: 'submitExam', examId: currentExamId, examName: currentExamName, studentName: user.fullName, answers}) 
+        });
         const data = await r.json();
         if (data.ok) {
             document.getElementById('examQuestionsContainer').style.display = 'none';
@@ -204,7 +220,11 @@ async function submitExam() {
 
 async function loadAdminResults() {
     try {
-        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'getResults', filters: {}}) });
+        const r = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 🌟 إضافة الترويسة هنا
+            body: JSON.stringify({action: 'getResults', filters: {}}) 
+        });
         const data = await r.json();
         if (data.ok) {
             const box = document.getElementById('adminResultsList');
@@ -254,7 +274,11 @@ async function saveTeacherGrades() {
         totalEssayScore += val;
     });
     try {
-        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'saveTeacherGrades', rowIndex: currentGradingRowIndex, updatedDetails: currentGradingDetails, newEssayScore: totalEssayScore}) });
+        const r = await fetch(API_URL, { 
+            method: 'POST', 
+            headers: {'Content-Type': 'text/plain;charset=utf-8'}, // 🌟 إضافة الترويسة هنا
+            body: JSON.stringify({action: 'saveTeacherGrades', rowIndex: currentGradingRowIndex, updatedDetails: currentGradingDetails, newEssayScore: totalEssayScore}) 
+        });
         const data = await r.json();
         if (data.ok) {
             toast('✅ تم حفظ الدرجات بنجاح');
