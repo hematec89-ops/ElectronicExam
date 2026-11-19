@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0284c7">
-<title>منصة الاختبارات الممتعة</title>
+<title> الاختبارات الالكترونية - مؤسسة انقاذ الطفل - فلسطين</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<!-- مكتبة تحويل الـ HTML إلى PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -55,15 +54,11 @@
   #gradingModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.7); z-index:1000; overflow-y:auto; padding:20px; backdrop-filter: blur(4px);}
   .modal-content {background:#fff; margin:0 auto; padding:24px; border-radius:24px; max-width:600px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);}
 
-  /* نافذة التثبيت */
-  #installBanner {position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #fff; border-radius: 16px; padding: 20px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 9999; display: none; text-align: center; border: 2px solid #0ea5e9; animation: slideUp 0.5s ease-out;}
-  @keyframes slideUp { from { bottom: -100px; opacity: 0; } to { bottom: 20px; opacity: 1; } }
-  .install-title { font-size: 18px; font-weight: bold; color: #0284c7; margin-bottom: 10px; }
-  .install-desc { font-size: 14px; color: #475569; margin-bottom: 15px; }
-  .install-btn-group { display: flex; gap: 10px; }
-  .install-btn-group button { flex: 1; padding: 10px; border-radius: 8px; font-weight: bold; font-family: 'Cairo'; cursor: pointer; border: none; }
-  .btn-install-yes { background: #22c55e; color: white; box-shadow: 0 3px 0 #16a34a; }
-  .btn-install-no { background: #f1f5f9; color: #64748b; }
+  /* شريط التقدم والمؤقت */
+  .exam-header-sticky { position: sticky; top: 75px; background: #fff; z-index: 9; padding: 12px 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border: 2px solid #bae6fd;}
+  .progress-container { flex: 1; margin-left: 15px; background: #e2e8f0; height: 14px; border-radius: 7px; overflow: hidden; position: relative;}
+  .progress-bar { height: 100%; background: #22c55e; width: 0%; transition: width 0.3s ease; border-radius: 7px;}
+  .timer { font-size: 20px; font-weight: bold; color: #ef4444; font-family: monospace; display: flex; align-items: center; gap: 5px; background: #fef2f2; padding: 5px 10px; border-radius: 10px; border: 1px solid #fecaca;}
 </style>
 </head>
 <body>
@@ -86,7 +81,6 @@
 
   <div id="studentView" style="display:none;">
     
-    <!-- 1. حاوية حالة الطالب (منع الإعادة والنتيجة) -->
     <div id="alreadyTakenContainer" style="display:none;"></div>
 
     <div class="card" id="examListCard">
@@ -100,10 +94,18 @@
     </div>
     
     <div id="examQuestionsContainer" style="display:none;">
+      <!-- شريط التقدم والمؤقت -->
+      <div class="exam-header-sticky">
+        <div class="progress-container">
+          <div class="progress-bar" id="examProgressBar"></div>
+        </div>
+        <div class="timer" id="examTimer">⏱️ 00:00</div>
+      </div>
+
       <div class="card">
         <h2 id="examTitleDisplay" style="color:#0ea5e9; text-align:center; font-size:22px;">الاختبار</h2>
         <div id="examQuestionsList"></div>
-        <button class="btn-primary" style="background:#0ea5e9; box-shadow:0 4px 0 #0284c7;" onclick="submitExam()">✅ تسليم الاختبار</button>
+        <button class="btn-primary" style="background:#0ea5e9; box-shadow:0 4px 0 #0284c7;" onclick="submitExam(false)">✅ تسليم الاختبار</button>
       </div>
     </div>
     
@@ -134,16 +136,6 @@
   </div>
 </div>
 
-<!-- نافذة التثبيت -->
-<div id="installBanner">
-  <div class="install-title">📱 تطبيق منصة الاختبارات</div>
-  <div class="install-desc">قم بتثبيت التطبيق على جهازك للوصول السريع وتجربة أفضل!</div>
-  <div class="install-btn-group">
-    <button class="btn-install-yes" id="btnInstallNow">تثبيت الآن</button>
-    <button class="btn-install-no" id="btnInstallLater">لاحقاً</button>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -152,7 +144,9 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxwF2wnC1nziULn9eaw4Mlx
 
 let currentExamId = '', currentExamName = '', currentQuestions = [];
 let currentGradingRowIndex = null, currentGradingDetails = [];
-let deferredPrompt;
+let examTimerInterval = null;
+let examTimeLeft = 0;
+let totalValidQuestions = 0;
 
 function toast(msg) {
     const t = document.getElementById('toast');
@@ -161,7 +155,7 @@ function toast(msg) {
 }
 
 // ==========================================
-// 1. تسجيل Service Worker للعمل بدون إنترنت
+// 1. تسجيل Service Worker
 // ==========================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -170,34 +164,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // ==========================================
-// 2. نظام التثبيت التلقائي (PWA)
-// ==========================================
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('installBanner').style.display = 'block';
-});
-
-document.getElementById('btnInstallNow').addEventListener('click', async () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-    }
-    document.getElementById('installBanner').style.display = 'none';
-});
-
-document.getElementById('btnInstallLater').addEventListener('click', () => {
-    document.getElementById('installBanner').style.display = 'none';
-});
-
-window.addEventListener('appinstalled', () => {
-    document.getElementById('installBanner').style.display = 'none';
-    toast('🎉 تم تثبيت التطبيق بنجاح!');
-});
-
-// ==========================================
-// 3. نظام تسجيل الدخول والتحقق
+// 2. نظام تسجيل الدخول والتحقق
 // ==========================================
 async function handleLogin() {
     const user = document.getElementById('loginUsername').value.trim();
@@ -228,7 +195,10 @@ async function handleLogin() {
     } catch (e) { err.textContent = 'فشل الاتصال بالخادم'; err.style.display = 'block'; }
 }
 
-function logout() { localStorage.removeItem('exam_user'); location.reload(); }
+function logout() { 
+    localStorage.removeItem('exam_user'); 
+    location.reload(); 
+}
 
 async function loadExams() {
     try {
@@ -236,13 +206,13 @@ async function loadExams() {
         const data = await r.json();
         if (data.ok) {
             const sel = document.getElementById('examSelect');
-            sel.innerHTML = '<option value="">— اختر الاختبار —</option>' + data.exams.map(e => `<option value="${e.id}" data-name="${e.name}">${e.name}</option>`).join('');
+            sel.innerHTML = '<option value="">— اختر الاختبار —</option>' + data.exams.map(e => `<option value="${e.id}" data-name="${e.name}" data-duration="${e.duration}">${e.name}</option>`).join('');
         }
     } catch(e) { toast('فشل تحميل الاختبارات'); }
 }
 
 // ==========================================
-// 4. بدء الاختبار ومنع الإعادة
+// 3. بدء الاختبار ومنع الإعادة
 // ==========================================
 async function startExam() {
     const sel = document.getElementById('examSelect');
@@ -252,6 +222,7 @@ async function startExam() {
     const user = JSON.parse(localStorage.getItem('exam_user'));
     currentExamId = opt.value; 
     currentExamName = opt.dataset.name;
+    const duration = parseInt(opt.dataset.duration) || 30; // بالدقائق
     
     const btn = event.target;
     const originalText = btn.textContent;
@@ -286,9 +257,19 @@ async function startExam() {
         if (data.ok) {
             currentQuestions = data.questions;
             renderQuestions();
+            
+            // إعداد شريط التقدم
+            totalValidQuestions = currentQuestions.filter(q => q.qNo !== 'نص').length;
+            updateProgressBar();
+            
+            // بدء المؤقت
+            examTimeLeft = duration * 60; // تحويل إلى ثواني
+            startTimer();
+
             document.getElementById('examListCard').style.display = 'none';
             document.getElementById('alreadyTakenContainer').style.display = 'none';
             document.getElementById('examQuestionsContainer').style.display = 'block';
+            window.scrollTo(0, 0);
         }
     } catch(e) { 
         toast('حدث خطأ في الاتصال بالخادم'); 
@@ -296,6 +277,50 @@ async function startExam() {
         btn.textContent = originalText;
         btn.disabled = false;
     }
+}
+
+function startTimer() {
+    if (examTimerInterval) clearInterval(examTimerInterval);
+    
+    const timerDisplay = document.getElementById('examTimer');
+    
+    const updateTimer = () => {
+        const minutes = Math.floor(examTimeLeft / 60);
+        const seconds = examTimeLeft % 60;
+        timerDisplay.innerHTML = `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        if (examTimeLeft <= 60) {
+            timerDisplay.style.color = '#dc2626'; // يتحول للأحمر عند آخر دقيقة
+            timerDisplay.style.animation = 'pulse 1s infinite';
+        }
+        
+        if (examTimeLeft <= 0) {
+            clearInterval(examTimerInterval);
+            timerDisplay.innerHTML = `⏱️ 00:00`;
+            toast('⌛ انتهى الوقت! جاري تسليم الاختبار تلقائياً...');
+            submitExam(true); // true تعني تسليم تلقائي
+        }
+        examTimeLeft--;
+    };
+    
+    updateTimer();
+    examTimerInterval = setInterval(updateTimer, 1000);
+}
+
+function updateProgressBar() {
+    let answeredCount = 0;
+    currentQuestions.forEach((q, idx) => {
+        if (q.qNo === 'نص') return;
+        if (q.options && q.options.length > 0) {
+            if (document.querySelector(`input[name="q_${idx}"]:checked`)) answeredCount++;
+        } else {
+            const txt = document.getElementById(`q_${idx}`);
+            if (txt && txt.value.trim() !== '') answeredCount++;
+        }
+    });
+    
+    const percentage = totalValidQuestions > 0 ? (answeredCount / totalValidQuestions) * 100 : 0;
+    document.getElementById('examProgressBar').style.width = percentage + '%';
 }
 
 function renderAlreadyTakenScreen(data, examName) {
@@ -333,11 +358,12 @@ function renderAlreadyTakenScreen(data, examName) {
 }
 
 // ==========================================
-// 5. عرض الأسئلة والتفاعل
+// 4. عرض الأسئلة والتفاعل
 // ==========================================
 function markAsAnswered(element) {
     const qItem = element.closest('.q-item');
     if (qItem) qItem.classList.add('answered');
+    updateProgressBar(); // تحديث شريط التقدم
 }
 
 function renderQuestions() {
@@ -373,9 +399,16 @@ function renderQuestions() {
 }
 
 // ==========================================
-// 6. تسليم الاختبار (مع دعم Offline)
+// 5. تسليم الاختبار
 // ==========================================
-async function submitExam() {
+async function submitExam(isAutoSubmit = false) {
+    if (examTimerInterval) clearInterval(examTimerInterval); // إيقاف المؤقت
+    
+    if (!isAutoSubmit && !confirm('هل أنت متأكد من تسليم الاختبار؟ لن تتمكن من التعديل بعد ذلك.')) {
+        startTimer(); // إعادة تشغيل المؤقت إذا ألغى المستخدم
+        return;
+    }
+
     const user = JSON.parse(localStorage.getItem('exam_user'));
     const answers = currentQuestions.map((q, idx) => {
         if (q.qNo === 'نص') return null;
@@ -392,9 +425,11 @@ async function submitExam() {
     const offlineData = { examId: currentExamId, examName: currentExamName, studentName: user.fullName, answers, timestamp: new Date().toISOString() };
     localStorage.setItem('offline_exam_backup', JSON.stringify(offlineData));
 
-    const btn = event.target;
-    btn.disabled = true; 
-    btn.textContent = 'جاري التسليم...';
+    const btn = document.querySelector('#examQuestionsContainer .btn-primary');
+    if (btn) {
+        btn.disabled = true; 
+        btn.textContent = 'جاري التسليم...';
+    }
 
     try {
         const r = await fetch(API_URL, { 
@@ -411,13 +446,15 @@ async function submitExam() {
         }
     } catch(e) { 
         alert('⚠️ أنت غير متصل بالإنترنت حالياً.\nلقد تم حفظ إجاباتك على جهازك بأمان. يرجى الاتصال بالإنترنت والعودة للتطبيق لتسليم الاختبار.');
-        btn.disabled = false; 
-        btn.textContent = '✅ تسليم الاختبار';
+        if (btn) {
+            btn.disabled = false; 
+            btn.textContent = '✅ تسليم الاختبار';
+        }
     }
 }
 
 // ==========================================
-// 7. تحميل ورقة الإجابات (PDF)
+// 6. تحميل ورقة الإجابات (PDF)
 // ==========================================
 document.getElementById('btnDownloadPdf').addEventListener('click', () => {
     const user = JSON.parse(localStorage.getItem('exam_user'));
@@ -488,7 +525,7 @@ document.getElementById('btnDownloadPdf').addEventListener('click', () => {
 });
 
 // ==========================================
-// 8. واجهة المدير والتصحيح
+// 7. واجهة المدير والتصحيح
 // ==========================================
 async function loadAdminResults() {
     try {
