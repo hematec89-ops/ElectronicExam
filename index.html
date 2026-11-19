@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1F4E78">
+<title>الاختبارات الإلكترونية</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:"Segoe UI",Tahoma,sans-serif;background:#f0f4f8;color:#1f2a37;padding-bottom:80px}
+  header{position:sticky;top:0;z-index:10;background:#1F4E78;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  header h1{font-size:17px;margin:0;flex:1}
+  #loginScreen {position: fixed; top: 0; left: 0; width: 100%; height: 100%;background: #f0f4f8; z-index: 9999;display: flex; align-items: center; justify-content: center;padding: 20px;}
+  .login-box {background: #fff; padding: 30px 20px; border-radius: 12px;box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px;text-align: center;}
+  .login-box h2 { color: #1F4E78; margin-top: 0; font-size: 22px; }
+  .login-box input {width: 100%; padding: 12px; margin-bottom: 15px;border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none;}
+  .login-box button {width: 100%; padding: 12px; background: #1F4E78; color: #fff;border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;}
+  .card{background:#fff;margin:12px;padding:16px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .card h2{font-size:18px;color:#1F4E78;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb;}
+  label{display:block;font-size:16px;font-weight:bold;color:#111827;margin:10px 0 6px;}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:16px;font-family:inherit;background:#fff;}
+  .btn-primary{background:#1F4E78;color:#fff; padding:12px; border:none; border-radius:8px; font-size:16px; font-weight:bold; cursor:pointer; width:100%; margin-top:10px;}
+  .q-item{border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin-bottom:12px;background:#fafbfc;}
+  .q-text{font-size:16px;font-weight:600;margin-bottom:10px;}
+  .opt-label{display:flex; align-items:center; gap:10px; background:#f3f4f6; padding:10px; border-radius:8px; margin-bottom:8px; cursor:pointer;}
+  .opt-label input{width:20px; height:20px;}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;z-index:99;}
+  .toast.show{opacity:1}
+  #gradingModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; overflow-y:auto; padding:20px;}
+  .modal-content {background:#fff; margin:0 auto; padding:20px; border-radius:12px; max-width:600px;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>منصة الاختبارات</h2>
+    <input type="text" id="loginUsername" placeholder="اسم المستخدم" value="admin">
+    <input type="password" id="loginPassword" placeholder="كلمة المرور" value="123">
+    <button onclick="handleLogin()">دخول</button>
+    <p id="loginError" style="color:red; font-size:13px; display:none;"></p>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+  <header>
+    <h1>الاختبارات الإلكترونية</h1>
+    <button onclick="logout()" style="background:#dc2626; color:white; border:none; padding:6px 10px; border-radius:6px; font-size:12px; cursor:pointer;">خروج</button>
+  </header>
+
+  <div id="studentView" style="display:none;">
+    <div class="card" id="examListCard">
+      <h2>الاختبارات المتاحة</h2>
+      <label>اختر الاختبار</label>
+      <select id="examSelect"></select>
+      <button class="btn-primary" onclick="startExam()">🚀 بدء الاختبار</button>
+    </div>
+    <div id="examQuestionsContainer" style="display:none;">
+      <div class="card">
+        <h2 id="examTitleDisplay">الاختبار</h2>
+        <div id="examQuestionsList"></div>
+        <button class="btn-primary" style="background:#166534;" onclick="submitExam()">✅ تسليم الاختبار</button>
+      </div>
+    </div>
+    <div id="examResultContainer" style="display:none;" class="card">
+      <h2>تم التسليم</h2>
+      <p id="examResultMsg" style="text-align:center; font-size:18px; color:#166534; font-weight:bold; padding:20px;"></p>
+      <button class="btn-primary" onclick="location.reload()">العودة للرئيسية</button>
+    </div>
+  </div>
+
+  <div id="adminView" style="display:none;">
+    <div class="card">
+      <h2>سجل نتائج الطلاب</h2>
+      <div id="adminResultsList"></div>
+    </div>
+  </div>
+</div>
+
+<div id="gradingModal">
+  <div class="modal-content">
+    <h2 style="color:#d97706; border-bottom:2px solid #d97706; padding-bottom:10px;">تصحيح الأسئلة المقالية</h2>
+    <div id="essayQuestionsContainer"></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn-primary" style="background:#166534;" onclick="saveTeacherGrades()">💾 حفظ الدرجات</button>
+      <button class="btn-primary" style="background:#991b1b;" onclick="closeGradingModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ⚠️ ضع رابط الـ Web App الخاص بك هنا
+const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+let currentExamId = '', currentExamName = '', currentQuestions = [];
+let currentGradingRowIndex = null, currentGradingDetails = [];
+
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+async function handleLogin() {
+    const user = document.getElementById('loginUsername').value.trim();
+    const pass = document.getElementById('loginPassword').value.trim();
+    const err = document.getElementById('loginError');
+    if (!user || !pass) { err.textContent = 'أدخل البيانات'; err.style.display = 'block'; return; }
+    try {
+        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'login', username: user, password: pass}) });
+        const data = await r.json();
+        if (data.ok) {
+            localStorage.setItem('exam_user', JSON.stringify(data.user));
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            if (data.user.role === 'مدير') {
+                document.getElementById('studentView').style.display = 'none';
+                document.getElementById('adminView').style.display = 'block';
+                loadAdminResults();
+            } else {
+                document.getElementById('studentView').style.display = 'block';
+                document.getElementById('adminView').style.display = 'none';
+                loadExams();
+            }
+        } else { err.textContent = data.error; err.style.display = 'block'; }
+    } catch (e) { err.textContent = 'فشل الاتصال'; err.style.display = 'block'; }
+}
+
+function logout() { localStorage.removeItem('exam_user'); location.reload(); }
+
+async function loadExams() {
+    try {
+        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'getExams'}) });
+        const data = await r.json();
+        if (data.ok) {
+            const sel = document.getElementById('examSelect');
+            sel.innerHTML = '<option value="">— اختر الاختبار —</option>' + data.exams.map(e => `<option value="${e.id}" data-name="${e.name}">${e.name}</option>`).join('');
+        }
+    } catch(e) { toast('فشل تحميل الاختبارات'); }
+}
+
+async function startExam() {
+    const sel = document.getElementById('examSelect');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt.value) return toast('اختر اختباراً');
+    currentExamId = opt.value; currentExamName = opt.dataset.name;
+    document.getElementById('examTitleDisplay').textContent = currentExamName;
+    try {
+        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'getQuestions', examId: currentExamId}) });
+        const data = await r.json();
+        if (data.ok) {
+            currentQuestions = data.questions;
+            renderQuestions();
+            document.getElementById('examListCard').style.display = 'none';
+            document.getElementById('examQuestionsContainer').style.display = 'block';
+        }
+    } catch(e) { toast('فشل تحميل الأسئلة'); }
+}
+
+function renderQuestions() {
+    const list = document.getElementById('examQuestionsList');
+    list.innerHTML = currentQuestions.map((q, idx) => {
+        let input = '';
+        if (q.options && q.options.length > 0) {
+            input = q.options.map(opt => `
+                <label class="opt-label">
+                    <input type="radio" name="q_${idx}" value="${opt}">
+                    <span>${opt}</span>
+                </label>
+            `).join('');
+        } else {
+            input = `<textarea id="q_${idx}" rows="3" placeholder="اكتب إجابتك هنا..."></textarea>`;
+        }
+        return `<div class="q-item"><div class="q-text">${idx+1}. ${q.text} <span style="color:#0284c7;font-size:12px;">(${q.grade} د)</span></div>${input}</div>`;
+    }).join('');
+}
+
+async function submitExam() {
+    const user = JSON.parse(localStorage.getItem('exam_user'));
+    const answers = currentQuestions.map((q, idx) => {
+        let ans = '';
+        if (q.options && q.options.length > 0) {
+            const sel = document.querySelector(`input[name="q_${idx}"]:checked`);
+            if (sel) ans = sel.value;
+        } else {
+            ans = document.getElementById(`q_${idx}`).value.trim();
+        }
+        return { qNo: q.qNo, answer: ans };
+    });
+    try {
+        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'submitExam', examId: currentExamId, examName: currentExamName, studentName: user.fullName, answers}) });
+        const data = await r.json();
+        if (data.ok) {
+            document.getElementById('examQuestionsContainer').style.display = 'none';
+            document.getElementById('examResultContainer').style.display = 'block';
+            document.getElementById('examResultMsg').textContent = data.message;
+        }
+    } catch(e) { toast('فشل التسليم'); }
+}
+
+async function loadAdminResults() {
+    try {
+        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'getResults', filters: {}}) });
+        const data = await r.json();
+        if (data.ok) {
+            const box = document.getElementById('adminResultsList');
+            if(data.results.length === 0) { box.innerHTML = '<p style="text-align:center; color:#666;">لا توجد نتائج بعد.</p>'; return; }
+            box.innerHTML = data.results.map(r => {
+                const isPending = r.status === 'قيد المراجعة';
+                const total = Number(r.autoScore) + Number(r.essayScore);
+                const encodedDetails = encodeURIComponent(r.detailsJson);
+                return `
+                <div style="border:1px solid #cbd5e1; padding:12px; border-radius:10px; margin-bottom:12px; background:#f8fafc;">
+                    <div style="font-weight:bold; color:#1F4E78; font-size:16px;">${r.studentName}</div>
+                    <div style="font-size:13px; color:#64748b; margin:5px 0;">${r.examName} <br> ${r.date}</div>
+                    <div style="font-size:15px; margin-bottom:8px;">الدرجة: <span style="color:#166534; font-weight:bold;">${total} / ${r.totalScore}</span> <span style="font-size:12px; color:${isPending ? '#d97706' : '#166534'}; margin-right:10px;">(${r.status})</span></div>
+                    ${isPending ? `<button class="btn-primary" style="background:#d97706; margin-top:5px;" onclick="openGradingModal(${r.rowIndex}, '${encodedDetails}')">✍️ تصحيح الأسئلة المقالية</button>` : ''}
+                </div>`;
+            }).join('');
+        }
+    } catch(e) { toast('فشل تحميل النتائج'); }
+}
+
+function openGradingModal(rowIndex, encodedJson) {
+    currentGradingRowIndex = rowIndex;
+    currentGradingDetails = JSON.parse(decodeURIComponent(encodedJson));
+    const container = document.getElementById('essayQuestionsContainer');
+    const essays = currentGradingDetails.filter(q => q.type === 'essay');
+    if (essays.length === 0) return toast('لا توجد أسئلة مقالية');
+    container.innerHTML = essays.map((q, i) => `
+        <div style="border:1px solid #cbd5e1; padding:12px; border-radius:8px; margin-bottom:12px; background:#f0f9ff;">
+            <div style="font-weight:bold; margin-bottom:5px; font-size:15px;">السؤال ${q.qNo}: ${q.text} <span style="color:#0284c7; font-size:12px;">(${q.grade} درجات)</span></div>
+            <div style="font-size:14px; color:#475569; margin-bottom:5px;">إجابة الطالب: <span style="color:#166534; font-weight:bold;">${q.studentAns || 'لم يجب'}</span></div>
+            <div style="font-size:14px; color:#475569; margin-bottom:10px;">الإجابة النموذجية: <span style="color:#64748b;">${q.correctAns || '—'}</span></div>
+            <label style="display:inline-block; margin:0;">الدرجة المستحقة:</label>
+            <input type="number" id="grade_${i}" data-idx="${currentGradingDetails.indexOf(q)}" value="${q.earned || 0}" min="0" max="${q.grade}" step="0.25" style="width:100px; padding:8px; font-size:16px; text-align:center;">
+        </div>
+    `).join('');
+    document.getElementById('gradingModal').style.display = 'block';
+}
+
+function closeGradingModal() { document.getElementById('gradingModal').style.display = 'none'; }
+
+async function saveTeacherGrades() {
+    let totalEssayScore = 0;
+    document.querySelectorAll('#essayQuestionsContainer input[type="number"]').forEach(input => {
+        const idx = Number(input.dataset.idx);
+        const val = Number(input.value) || 0;
+        currentGradingDetails[idx].earned = val;
+        totalEssayScore += val;
+    });
+    try {
+        const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({action: 'saveTeacherGrades', rowIndex: currentGradingRowIndex, updatedDetails: currentGradingDetails, newEssayScore: totalEssayScore}) });
+        const data = await r.json();
+        if (data.ok) {
+            toast('✅ تم حفظ الدرجات بنجاح');
+            closeGradingModal();
+            loadAdminResults(); 
+        }
+    } catch(e) { toast('❌ فشل الاتصال بالخادم'); }
+}
+
+window.onload = () => {
+    const user = localStorage.getItem('exam_user');
+    if (user) {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        const u = JSON.parse(user);
+        if (u.role === 'مدير') { document.getElementById('adminView').style.display = 'block'; loadAdminResults(); }
+        else { document.getElementById('studentView').style.display = 'block'; loadExams(); }
+    }
+};
+</script>
+</body>
+</html>
