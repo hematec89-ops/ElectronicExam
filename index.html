@@ -66,7 +66,7 @@
 
 <div id="loginScreen">
   <div class="login-box">
-    <h2>🌟 منصة الاختبارات</h2>
+    <h2>🌟  نظام الاختبارات الالكتروني</h2>
     <input type="text" id="loginUsername" placeholder="اسم المستخدم" value="admin">
     <input type="password" id="loginPassword" placeholder="كلمة المرور" value="123">
     <button onclick="handleLogin()">دخول 🚀</button>
@@ -76,7 +76,7 @@
 
 <div id="mainApp" style="display:none;">
   <header>
-    <h1>✨ الاختبارات الممتعة</h1>
+    <h1>✨ الاختبارات الالكترونية - مؤسسة انقاذ الطفل - فلسطين</h1>
     <button onclick="logout()" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; font-family:'Cairo'; cursor:pointer;">خروج</button>
   </header>
 
@@ -90,13 +90,7 @@
       <label>رقم الطفل (ID):</label>
       <input type="text" id="childId" placeholder="أدخل رقم الطفل هنا..." style="margin-bottom:15px;">
       
-      <!-- قائمة اختيار الصف -->
-      <label>الصف الدراسي:</label>
-      <select id="gradeSelect" onchange="loadExams()" style="margin-bottom:15px;">
-        <option value="">— اختر الصف أولاً —</option>
-        <option value="السادس والسابع">الصف السادس والسابع</option>
-        <option value="الثامن والتاسع">الصف الثامن والتاسع</option>
-      </select>
+      <!-- تم إزالة قائمة اختيار الصف من هنا لأنها ستُحدد تلقائياً -->
 
       <label>الاختبارات المتاحة:</label>
       <select id="examSelect"></select>
@@ -202,6 +196,7 @@ async function handleLogin() {
             localStorage.setItem('exam_user', JSON.stringify(data.user));
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
+            
             if (data.user.role === 'مدير') {
                 document.getElementById('studentView').style.display = 'none';
                 document.getElementById('adminView').style.display = 'block';
@@ -209,6 +204,7 @@ async function handleLogin() {
             } else {
                 document.getElementById('studentView').style.display = 'block';
                 document.getElementById('adminView').style.display = 'none';
+                loadExams(); // استدعاء تحميل الاختبارات بناءً على صف الطالب
             }
         } else { err.textContent = data.error; err.style.display = 'block'; }
     } catch (e) { err.textContent = 'فشل الاتصال بالخادم'; err.style.display = 'block'; }
@@ -220,15 +216,16 @@ function logout() {
 }
 
 async function loadExams() {
-    const grade = document.getElementById('gradeSelect').value;
+    const user = JSON.parse(localStorage.getItem('exam_user'));
+    const grade = user.grade; // جلب الصف من بيانات المستخدم المسجل
     const sel = document.getElementById('examSelect');
     
     if (!grade) {
-        sel.innerHTML = '<option value="">— اختر الصف أولاً —</option>';
+        sel.innerHTML = '<option value="">⚠️ لم يتم تعيين صف لحسابك، يرجى مراجعة الإدارة</option>';
         return;
     }
 
-    sel.innerHTML = '<option value="">جاري التحميل...</option>';
+    sel.innerHTML = '<option value="">جاري تحميل الاختبارات...</option>';
     try {
         const r = await fetch(API_URL, { 
             method: 'POST', 
@@ -238,12 +235,15 @@ async function loadExams() {
         const data = await r.json();
         if (data.ok) {
             if (data.exams.length === 0) {
-                sel.innerHTML = '<option value="">لا توجد اختبارات لهذا الصف</option>';
+                sel.innerHTML = '<option value="">لا توجد اختبارات متاحة لصفك حالياً</option>';
             } else {
                 sel.innerHTML = '<option value="">— اختر الاختبار —</option>' + data.exams.map(e => `<option value="${e.id}" data-name="${e.name}" data-duration="${e.duration}">${e.name}</option>`).join('');
             }
         }
-    } catch(e) { sel.innerHTML = '<option value="">فشل التحميل</option>'; toast('فشل تحميل الاختبارات'); }
+    } catch(e) { 
+        sel.innerHTML = '<option value="">فشل الاتصال بالخادم</option>'; 
+        toast('فشل تحميل الاختبارات'); 
+    }
 }
 
 // ==========================================
@@ -261,7 +261,7 @@ async function startExam() {
     
     // تحديد نوع الاختبار
     isMathExam = currentExamId === 'E3' || currentExamId === 'E4'; 
-    isEnglishExam = currentExamId === 'E5'; 
+    isEnglishExam = currentExamId === 'E5' || currentExamId === 'E6';  
     
     const btn = event.target;
     const originalText = btn.textContent;
@@ -426,12 +426,32 @@ function renderQuestions() {
 
         // 1. إذا كان السؤال هو القطعة نفسها
         if (q.qNo === 'نص') {
-            currentPassage = qText.replace(/\n/g, '<br>'); // حفظ نص القطعة لاستخدامه في الأسئلة
+            currentPassage = qText.replace(/\n/g, '<br>'); 
             htmlContent += `<div class="passage-box" ${ltrAttr}>${currentPassage}</div>`;
             return;
         }
 
-        // 2. تجهيز الخيارات أو مربع الإجابة
+        // 2. الذكاء البرمجي: التحقق مما إذا كان السؤال الحالي ينتمي للقطعة أم لا
+        if (currentPassage !== '') {
+            let isReadingQuestion = false;
+            if (isEnglishExam) {
+                // في الإنجليزي: القطعة تخص أسئلة Q5 فقط
+                if (String(q.qNo).includes('Q5')) isReadingQuestion = true;
+            } else {
+                // في العربي: القطعة تخص الأسئلة من 1 إلى 4 فقط
+                const qNum = parseInt(q.qNo);
+                if (!isNaN(qNum) && qNum <= 4) {
+                    isReadingQuestion = true;
+                }
+            }
+
+            // إذا لم يكن السؤال من أسئلة القطعة، نقوم بإخفاء القطعة
+            if (!isReadingQuestion) {
+                currentPassage = ''; 
+            }
+        }
+
+        // 3. تجهيز الخيارات أو مربع الإجابة
         let input = '';
         if (q.options && q.options.length > 0) {
             input = q.options.map(opt => {
@@ -447,7 +467,7 @@ function renderQuestions() {
             input = `<textarea id="q_${idx}" rows="3" placeholder="اكتب إجابتك هنا..." oninput="markAsAnswered(this)" ${ltrAttr}></textarea>`;
         }
         
-        // 3. إضافة القطعة داخل السؤال (إذا كان هناك قطعة محفوظة)
+        // 4. إضافة القطعة داخل السؤال (إذا كان السؤال الحالي من أسئلة القطعة)
         let passageHtml = '';
         if (currentPassage !== '') {
             passageHtml = `
@@ -458,12 +478,12 @@ function renderQuestions() {
             `;
         }
 
-        // 4. ترتيب النص الإنجليزي ليكون من اليسار لليمين
+        // 5. ترتيب النص الإنجليزي ليكون من اليسار لليمين
         let qTextHtml = isEnglishExam 
             ? `<div ${ltrAttr} ${ltrInline}>${qNo}. ${qText}</div>` 
             : `${qNo}. ${qText}`;
 
-        // 5. بناء السؤال
+        // 6. بناء السؤال
         htmlContent += `
             <div class="q-item" id="container_q_${idx}">
                 ${passageHtml}
@@ -725,8 +745,14 @@ window.onload = () => {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         const u = JSON.parse(user);
-        if (u.role === 'مدير') { document.getElementById('adminView').style.display = 'block'; loadAdminResults(); }
-        else { document.getElementById('studentView').style.display = 'block'; }
+        if (u.role === 'مدير') { 
+            document.getElementById('adminView').style.display = 'block'; 
+            loadAdminResults(); 
+        }
+        else { 
+            document.getElementById('studentView').style.display = 'block'; 
+            loadExams(); // تحميل تلقائي بناءً على صف الطالب
+        }
     }
 };
 </script>
