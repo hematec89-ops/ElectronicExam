@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
+<!-- مكتبة تحويل الـ HTML إلى PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -41,19 +42,20 @@
   .q-item.answered { background-color: #dcfce7; border-color: #86efac; box-shadow: 0 4px 12px rgba(134, 239, 172, 0.3);}
   
   .q-text{font-size:18px;font-weight:700;margin-bottom:15px; color:#1e293b;}
-  .q-grade{font-size:14px; color:#0ea5e9; background:#e0f2fe; padding:2px 8px; border-radius:10px;}
+  .q-grade{font-size:14px; color:#0ea5e9; background:#e0f2fe; padding:2px 8px; border-radius:10px; display: inline-block; margin-right: 5px;}
   
   .opt-label{display:flex; align-items:center; gap:12px; background:#f8fafc; padding:12px 16px; border-radius:12px; margin-bottom:10px; cursor:pointer; border:2px solid #e2e8f0; transition: 0.2s;}
   .opt-label:hover { background: #f1f5f9; border-color: #cbd5e1; }
-  .opt-label input{width:22px; height:22px; accent-color: #22c55e;}
-  .opt-label span { font-size:16px; font-weight:600; color:#334155; }
+  .opt-label input{width:22px; height:22px; accent-color: #22c55e; flex-shrink: 0;}
+  .opt-label span { font-size:16px; font-weight:600; color:#334155; width: 100%;}
   
-  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:30px;font-size:15px;opacity:0;transition:opacity .3s;z-index:99; box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 24px;border-radius:30px;font-size:15px;opacity:0;transition:opacity .3s;z-index:99; box-shadow:0 4px 12px rgba(0,0,0,0.15); pointer-events: none;}
   .toast.show{opacity:1}
   
   #gradingModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.7); z-index:1000; overflow-y:auto; padding:20px; backdrop-filter: blur(4px);}
   .modal-content {background:#fff; margin:0 auto; padding:24px; border-radius:24px; max-width:600px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);}
 
+  /* شريط التقدم والمؤقت */
   .exam-header-sticky { position: sticky; top: 75px; background: #fff; z-index: 9; padding: 12px 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border: 2px solid #bae6fd;}
   .progress-container { flex: 1; margin-left: 15px; background: #e2e8f0; height: 14px; border-radius: 7px; overflow: hidden; position: relative;}
   .progress-bar { height: 100%; background: #22c55e; width: 0%; transition: width 0.3s ease; border-radius: 7px;}
@@ -80,6 +82,7 @@
 
   <div id="studentView" style="display:none;">
     
+    <!-- 1. حاوية حالة الطالب (منع الإعادة والنتيجة) -->
     <div id="alreadyTakenContainer" style="display:none;"></div>
 
     <div class="card" id="examListCard">
@@ -101,6 +104,7 @@
     </div>
     
     <div id="examQuestionsContainer" style="display:none;">
+      <!-- شريط التقدم والمؤقت -->
       <div class="exam-header-sticky">
         <div class="progress-container">
           <div class="progress-bar" id="examProgressBar"></div>
@@ -154,6 +158,7 @@ let examTimerInterval = null;
 let examTimeLeft = 0;
 let totalValidQuestions = 0;
 let isMathExam = false;
+let isEnglishExam = false;
 
 function toast(msg) {
     const t = document.getElementById('toast');
@@ -253,7 +258,10 @@ async function startExam() {
     currentExamId = opt.value; 
     currentExamName = opt.dataset.name;
     const duration = parseInt(opt.dataset.duration) || 30;
-    isMathExam = currentExamId === 'E3' || currentExamId === 'E4'; // تفعيل الأرقام الهندية للرياضيات
+    
+    // تحديد نوع الاختبار
+    isMathExam = currentExamId === 'E3' || currentExamId === 'E4'; 
+    isEnglishExam = currentExamId === 'E5'; 
     
     const btn = event.target;
     const originalText = btn.textContent;
@@ -403,13 +411,17 @@ function renderQuestions() {
     let htmlContent = '';
     
     currentQuestions.forEach((q, idx) => {
-        // تطبيق الأرقام الهندية إذا كان اختبار رياضيات
+        // تطبيق الأرقام الهندية للرياضيات
         let qText = isMathExam ? toArabicNumerals(q.text) : q.text;
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let grade = isMathExam ? toArabicNumerals(q.grade) : q.grade;
 
+        // تطبيق اتجاه LTR للإنجليزي
+        let ltrAttr = isEnglishExam ? 'dir="ltr" style="text-align: left;"' : '';
+        let ltrInline = isEnglishExam ? 'style="display: inline-block;"' : '';
+
         if (q.qNo === 'نص') {
-            htmlContent += `<div class="passage-box">${qText.replace(/\n/g, '<br>')}</div>`;
+            htmlContent += `<div class="passage-box" ${ltrAttr}>${qText.replace(/\n/g, '<br>')}</div>`;
             return;
         }
 
@@ -420,16 +432,21 @@ function renderQuestions() {
                 return `
                 <label class="opt-label">
                     <input type="radio" name="q_${idx}" value="${opt}" onchange="markAsAnswered(this)">
-                    <span>${optText}</span>
+                    <span ${ltrAttr}>${optText}</span>
                 </label>
             `}).join('');
         } else {
-            input = `<textarea id="q_${idx}" rows="3" placeholder="اكتب إجابتك هنا..." oninput="markAsAnswered(this)"></textarea>`;
+            input = `<textarea id="q_${idx}" rows="3" placeholder="اكتب إجابتك هنا..." oninput="markAsAnswered(this)" ${ltrAttr}></textarea>`;
         }
         
+        // ترتيب النص الإنجليزي ليكون من اليسار لليمين
+        let qTextHtml = isEnglishExam 
+            ? `<div ${ltrAttr} ${ltrInline}>${qNo}. ${qText}</div>` 
+            : `${qNo}. ${qText}`;
+
         htmlContent += `
             <div class="q-item" id="container_q_${idx}">
-                <div class="q-text">${qNo}. ${qText} <span class="q-grade">(${grade} د)</span></div>
+                <div class="q-text">${qTextHtml} <span class="q-grade">(${grade} د)</span></div>
                 ${input}
             </div>
         `;
@@ -483,7 +500,7 @@ async function submitExam(isAutoSubmit = false) {
             document.getElementById('examResultContainer').style.display = 'block';
             
             let msg = data.message;
-            if (isMathExam) msg = toArabicNumerals(msg); // تحويل أي أرقام في الرسالة
+            if (isMathExam) msg = toArabicNumerals(msg);
             document.getElementById('examResultMsg').textContent = msg;
         }
     } catch(e) { 
@@ -496,7 +513,7 @@ async function submitExam(isAutoSubmit = false) {
 }
 
 // ==========================================
-// 6. تحميل ورقة الإجابات (PDF)
+// 6. تحميل ورقة الإجابات (PDF) - نسخة محسنة
 // ==========================================
 document.getElementById('btnDownloadPdf').addEventListener('click', async () => {
     const btn = document.getElementById('btnDownloadPdf');
@@ -504,6 +521,7 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
     btn.textContent = '⏳ جاري التحميل...';
     btn.disabled = true;
 
+    // التأكد من تحميل الخطوط قبل إنشاء الـ PDF
     await document.fonts.ready;
 
     const user = JSON.parse(localStorage.getItem('exam_user'));
@@ -525,11 +543,14 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let sAns = isMathExam ? toArabicNumerals(studentAns) : studentAns;
 
+        // تطبيق اتجاه LTR في الـ PDF للأسئلة الإنجليزية
+        let ltrStyle = isEnglishExam ? 'dir="ltr" style="text-align: left;"' : '';
+
         tableRows += `
             <tr>
                 <td class="col-qno">${qNo}</td>
-                <td class="col-qtext"><div>${qText}</div></td>
-                <td class="col-ans"><div>${sAns}</div></td>
+                <td class="col-qtext" ${ltrStyle}><div>${qText}</div></td>
+                <td class="col-ans" ${ltrStyle}><div>${sAns}</div></td>
             </tr>
         `;
     });
@@ -556,9 +577,9 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
             <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                 <thead>
                     <tr style="background: #0ea5e9; color: white;">
-                        <th style="border:1px solid #94a3b8; padding:10px; text-align:center;">رقم السؤال</th>
-                        <th style="border:1px solid #94a3b8; padding:10px; text-align:center;">نص السؤال</th>
-                        <th style="border:1px solid #94a3b8; padding:10px; text-align:center;">إجابة الطفل</th>
+                        <th style="border:1px solid #94a3b8; padding:10px; text-align:center; width: 10%;">رقم السؤال</th>
+                        <th style="border:1px solid #94a3b8; padding:10px; text-align:center; width: 55%;">نص السؤال</th>
+                        <th style="border:1px solid #94a3b8; padding:10px; text-align:center; width: 35%;">إجابة الطفل</th>
                     </tr>
                 </thead>
                 <tbody>${tableRows}</tbody>
@@ -569,9 +590,8 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
         <style>
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
             th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; vertical-align: top; }
-            .col-qno { width: 10%; text-align: center; font-weight: bold; }
-            .col-qtext { width: 55%; }
-            .col-ans { width: 35%; color: #1e40af; font-weight: bold; }
+            .col-qno { text-align: center; font-weight: bold; }
+            .col-ans { color: #1e40af; font-weight: bold; }
             td div { word-wrap: break-word; white-space: normal; line-height: 1.5; }
         </style>
     `;
@@ -618,7 +638,6 @@ async function loadAdminResults() {
                 const isPending = r.status === 'قيد المراجعة';
                 const total = Number(r.autoScore) + Number(r.essayScore);
                 const encodedDetails = encodeURIComponent(r.detailsJson);
-                // تحقق من نوع الاختبار لعرض الأرقام الهندية في لوحة المدير
                 const isMath = r.examId === 'E3' || r.examId === 'E4';
                 const displayTotal = isMath ? toArabicNumerals(total) : total;
                 const displayTotalScore = isMath ? toArabicNumerals(r.totalScore) : r.totalScore;
