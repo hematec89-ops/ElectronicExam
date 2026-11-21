@@ -409,26 +409,34 @@ function markAsAnswered(element) {
 function renderQuestions() {
     const list = document.getElementById('examQuestionsList');
     let htmlContent = '';
-    
+    let currentPassage = ''; // متغير لحفظ نص القطعة
+
     currentQuestions.forEach((q, idx) => {
         // تطبيق الأرقام الهندية للرياضيات
         let qText = isMathExam ? toArabicNumerals(q.text) : q.text;
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let grade = isMathExam ? toArabicNumerals(q.grade) : q.grade;
 
+        // تحويل النص المحصور بين _ _ إلى نص تحته خط
+        qText = qText.replace(/_([^_]+)_/g, '<u>$1</u>');
+
         // تطبيق اتجاه LTR للإنجليزي
         let ltrAttr = isEnglishExam ? 'dir="ltr" style="text-align: left;"' : '';
         let ltrInline = isEnglishExam ? 'style="display: inline-block;"' : '';
 
+        // 1. إذا كان السؤال هو القطعة نفسها
         if (q.qNo === 'نص') {
-            htmlContent += `<div class="passage-box" ${ltrAttr}>${qText.replace(/\n/g, '<br>')}</div>`;
+            currentPassage = qText.replace(/\n/g, '<br>'); // حفظ نص القطعة لاستخدامه في الأسئلة
+            htmlContent += `<div class="passage-box" ${ltrAttr}>${currentPassage}</div>`;
             return;
         }
 
+        // 2. تجهيز الخيارات أو مربع الإجابة
         let input = '';
         if (q.options && q.options.length > 0) {
             input = q.options.map(opt => {
                 let optText = isMathExam ? toArabicNumerals(opt) : opt;
+                optText = optText.replace(/_([^_]+)_/g, '<u>$1</u>');
                 return `
                 <label class="opt-label">
                     <input type="radio" name="q_${idx}" value="${opt}" onchange="markAsAnswered(this)">
@@ -439,13 +447,26 @@ function renderQuestions() {
             input = `<textarea id="q_${idx}" rows="3" placeholder="اكتب إجابتك هنا..." oninput="markAsAnswered(this)" ${ltrAttr}></textarea>`;
         }
         
-        // ترتيب النص الإنجليزي ليكون من اليسار لليمين
+        // 3. إضافة القطعة داخل السؤال (إذا كان هناك قطعة محفوظة)
+        let passageHtml = '';
+        if (currentPassage !== '') {
+            passageHtml = `
+                <details style="margin-bottom: 15px; background: #fdf4ff; border: 2px solid #f0abfc; border-radius: 12px; padding: 10px;">
+                    <summary style="cursor: pointer; font-weight: bold; color: #86198f; outline: none; font-size: 16px;">📖 عرض القطعة (اضغط هنا)</summary>
+                    <div style="margin-top: 15px; font-size: 16px; line-height: 1.8; font-weight: 600; color: #86198f; padding-top: 10px; border-top: 1px dashed #f0abfc;" ${ltrAttr}>${currentPassage}</div>
+                </details>
+            `;
+        }
+
+        // 4. ترتيب النص الإنجليزي ليكون من اليسار لليمين
         let qTextHtml = isEnglishExam 
             ? `<div ${ltrAttr} ${ltrInline}>${qNo}. ${qText}</div>` 
             : `${qNo}. ${qText}`;
 
+        // 5. بناء السؤال
         htmlContent += `
             <div class="q-item" id="container_q_${idx}">
+                ${passageHtml}
                 <div class="q-text">${qTextHtml} <span class="q-grade">(${grade} د)</span></div>
                 ${input}
             </div>
