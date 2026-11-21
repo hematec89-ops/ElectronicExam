@@ -16,7 +16,7 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{margin:0;font-family:'Cairo', sans-serif;background:#e0f2fe;color:#0f172a;padding-bottom:80px}
   header{position:sticky;top:0;z-index:10;background:#0ea5e9;color:#fff;padding:16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1); border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;}
-  header h1{font-size:20px;margin:0;flex:1; font-weight:700;}
+  header h1{font-size:18px;margin:0;flex:1; font-weight:700;}
   
   #loginScreen {position: fixed; top: 0; left: 0; width: 100%; height: 100%;background: #e0f2fe; z-index: 9999;display: flex; align-items: center; justify-content: center;padding: 20px;}
   .login-box {background: #fff; padding: 30px 20px; border-radius: 24px;box-shadow: 0 10px 25px rgba(14, 165, 233, 0.2); width: 100%; max-width: 400px;text-align: center;}
@@ -57,8 +57,9 @@
 
   /* شريط التقدم والمؤقت */
   .exam-header-sticky { position: sticky; top: 75px; background: #fff; z-index: 9; padding: 12px 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border: 2px solid #bae6fd;}
-  .progress-container { flex: 1; margin-left: 15px; background: #e2e8f0; height: 14px; border-radius: 7px; overflow: hidden; position: relative;}
+  .progress-container { flex: 1; margin-left: 10px; background: #e2e8f0; height: 14px; border-radius: 7px; overflow: hidden; position: relative;}
   .progress-bar { height: 100%; background: #22c55e; width: 0%; transition: width 0.3s ease; border-radius: 7px;}
+  .progress-text { font-size: 16px; font-weight: bold; color: #0284c7; margin-left: 15px; white-space: nowrap; }
   .timer { font-size: 20px; font-weight: bold; color: #ef4444; font-family: monospace; display: flex; align-items: center; gap: 5px; background: #fef2f2; padding: 5px 10px; border-radius: 10px; border: 1px solid #fecaca;}
 </style>
 </head>
@@ -66,7 +67,7 @@
 
 <div id="loginScreen">
   <div class="login-box">
-    <h2>🌟  نظام الاختبارات الالكتروني</h2>
+    <h2>🌟 منصة الاختبارات</h2>
     <input type="text" id="loginUsername" placeholder="اسم المستخدم" value="admin">
     <input type="password" id="loginPassword" placeholder="كلمة المرور" value="123">
     <button onclick="handleLogin()">دخول 🚀</button>
@@ -76,13 +77,13 @@
 
 <div id="mainApp" style="display:none;">
   <header>
-    <h1>✨ الاختبارات الالكترونية - مؤسسة انقاذ الطفل - فلسطين</h1>
+    <!-- تم إضافة ID لتغيير النص ديناميكياً -->
+    <h1 id="mainHeaderTitle">✨ الاختبارات الإلكترونية - مؤسسة إنقاذ الطفل - فلسطين</h1>
     <button onclick="logout()" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; font-family:'Cairo'; cursor:pointer;">خروج</button>
   </header>
 
   <div id="studentView" style="display:none;">
     
-    <!-- 1. حاوية حالة الطالب (منع الإعادة والنتيجة) -->
     <div id="alreadyTakenContainer" style="display:none;"></div>
 
     <div class="card" id="examListCard">
@@ -90,8 +91,6 @@
       <label>رقم الطفل (ID):</label>
       <input type="text" id="childId" placeholder="أدخل رقم الطفل هنا..." style="margin-bottom:15px;">
       
-      <!-- تم إزالة قائمة اختيار الصف من هنا لأنها ستُحدد تلقائياً -->
-
       <label>الاختبارات المتاحة:</label>
       <select id="examSelect"></select>
       <button class="btn-primary" onclick="startExam()">🚀 يلا نبدأ!</button>
@@ -103,6 +102,8 @@
         <div class="progress-container">
           <div class="progress-bar" id="examProgressBar"></div>
         </div>
+        <!-- عداد الأسئلة المجابة -->
+        <div class="progress-text" id="progressText">0 / 0</div>
         <div class="timer" id="examTimer">⏱️ 00:00</div>
       </div>
 
@@ -197,6 +198,9 @@ async function handleLogin() {
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
             
+            // تحديث اسم الهيدر ليشمل اسم الطفل
+            document.getElementById('mainHeaderTitle').textContent = '✨ ' + data.user.fullName + ' - مؤسسة إنقاذ الطفل';
+
             if (data.user.role === 'مدير') {
                 document.getElementById('studentView').style.display = 'none';
                 document.getElementById('adminView').style.display = 'block';
@@ -204,7 +208,7 @@ async function handleLogin() {
             } else {
                 document.getElementById('studentView').style.display = 'block';
                 document.getElementById('adminView').style.display = 'none';
-                loadExams(); // استدعاء تحميل الاختبارات بناءً على صف الطالب
+                loadExams(); 
             }
         } else { err.textContent = data.error; err.style.display = 'block'; }
     } catch (e) { err.textContent = 'فشل الاتصال بالخادم'; err.style.display = 'block'; }
@@ -217,7 +221,7 @@ function logout() {
 
 async function loadExams() {
     const user = JSON.parse(localStorage.getItem('exam_user'));
-    const grade = user.grade; // جلب الصف من بيانات المستخدم المسجل
+    const grade = user.grade; 
     const sel = document.getElementById('examSelect');
     
     if (!grade) {
@@ -259,7 +263,9 @@ async function startExam() {
     currentExamName = opt.dataset.name;
     const duration = parseInt(opt.dataset.duration) || 30;
     
-    // تحديد نوع الاختبار
+    // تحديث اسم الهيدر ليشمل اسم الاختبار بجانب اسم الطفل
+    document.getElementById('mainHeaderTitle').textContent = `✨ ${user.fullName} - ${currentExamName}`;
+
     isMathExam = currentExamId === 'E3' || currentExamId === 'E4'; 
     isEnglishExam = currentExamId === 'E5' || currentExamId === 'E6';  
     
@@ -324,7 +330,6 @@ function startTimer() {
         const minutes = Math.floor(examTimeLeft / 60);
         const seconds = examTimeLeft % 60;
         
-        // عرض المؤقت بالأرقام الهندية إذا كان اختبار رياضيات
         const mStr = minutes.toString().padStart(2, '0');
         const sStr = seconds.toString().padStart(2, '0');
         timerDisplay.innerHTML = `⏱️ ${isMathExam ? toArabicNumerals(mStr) : mStr}:${isMathExam ? toArabicNumerals(sStr) : sStr}`;
@@ -359,8 +364,14 @@ function updateProgressBar() {
         }
     });
     
+    // تحديث شريط التقدم الأخضر
     const percentage = totalValidQuestions > 0 ? (answeredCount / totalValidQuestions) * 100 : 0;
     document.getElementById('examProgressBar').style.width = percentage + '%';
+    
+    // تحديث عداد النص بجانب الشريط (الأسئلة المجابة / إجمالي الأسئلة)
+    let progressStr = `${answeredCount} / ${totalValidQuestions}`;
+    if (isMathExam) progressStr = toArabicNumerals(progressStr);
+    document.getElementById('progressText').textContent = progressStr;
 }
 
 function renderAlreadyTakenScreen(data, examName) {
@@ -409,49 +420,39 @@ function markAsAnswered(element) {
 function renderQuestions() {
     const list = document.getElementById('examQuestionsList');
     let htmlContent = '';
-    let currentPassage = ''; // متغير لحفظ نص القطعة
+    let currentPassage = ''; 
 
     currentQuestions.forEach((q, idx) => {
-        // تطبيق الأرقام الهندية للرياضيات
         let qText = isMathExam ? toArabicNumerals(q.text) : q.text;
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let grade = isMathExam ? toArabicNumerals(q.grade) : q.grade;
 
-        // تحويل النص المحصور بين _ _ إلى نص تحته خط
         qText = qText.replace(/_([^_]+)_/g, '<u>$1</u>');
 
-        // تطبيق اتجاه LTR للإنجليزي
         let ltrAttr = isEnglishExam ? 'dir="ltr" style="text-align: left;"' : '';
         let ltrInline = isEnglishExam ? 'style="display: inline-block;"' : '';
 
-        // 1. إذا كان السؤال هو القطعة نفسها
         if (q.qNo === 'نص') {
             currentPassage = qText.replace(/\n/g, '<br>'); 
             htmlContent += `<div class="passage-box" ${ltrAttr}>${currentPassage}</div>`;
             return;
         }
 
-        // 2. الذكاء البرمجي: التحقق مما إذا كان السؤال الحالي ينتمي للقطعة أم لا
         if (currentPassage !== '') {
             let isReadingQuestion = false;
             if (isEnglishExam) {
-                // في الإنجليزي: القطعة تخص أسئلة Q5 فقط
                 if (String(q.qNo).includes('Q5')) isReadingQuestion = true;
             } else {
-                // في العربي: القطعة تخص الأسئلة من 1 إلى 4 فقط
                 const qNum = parseInt(q.qNo);
                 if (!isNaN(qNum) && qNum <= 4) {
                     isReadingQuestion = true;
                 }
             }
-
-            // إذا لم يكن السؤال من أسئلة القطعة، نقوم بإخفاء القطعة
             if (!isReadingQuestion) {
                 currentPassage = ''; 
             }
         }
 
-        // 3. تجهيز الخيارات أو مربع الإجابة
         let input = '';
         if (q.options && q.options.length > 0) {
             input = q.options.map(opt => {
@@ -467,7 +468,6 @@ function renderQuestions() {
             input = `<textarea id="q_${idx}" rows="3" placeholder="اكتب إجابتك هنا..." oninput="markAsAnswered(this)" ${ltrAttr}></textarea>`;
         }
         
-        // 4. إضافة القطعة داخل السؤال (إذا كان السؤال الحالي من أسئلة القطعة)
         let passageHtml = '';
         if (currentPassage !== '') {
             passageHtml = `
@@ -478,12 +478,10 @@ function renderQuestions() {
             `;
         }
 
-        // 5. ترتيب النص الإنجليزي ليكون من اليسار لليمين
         let qTextHtml = isEnglishExam 
             ? `<div ${ltrAttr} ${ltrInline}>${qNo}. ${qText}</div>` 
             : `${qNo}. ${qText}`;
 
-        // 6. بناء السؤال
         htmlContent += `
             <div class="q-item" id="container_q_${idx}">
                 ${passageHtml}
@@ -562,7 +560,6 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
     btn.textContent = '⏳ جاري التحميل...';
     btn.disabled = true;
 
-    // التأكد من تحميل الخطوط قبل إنشاء الـ PDF
     await document.fonts.ready;
 
     const user = JSON.parse(localStorage.getItem('exam_user'));
@@ -584,7 +581,6 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let sAns = isMathExam ? toArabicNumerals(studentAns) : studentAns;
 
-        // تطبيق اتجاه LTR في الـ PDF للأسئلة الإنجليزية
         let ltrStyle = isEnglishExam ? 'dir="ltr" style="text-align: left;"' : '';
 
         tableRows += `
@@ -745,13 +741,17 @@ window.onload = () => {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         const u = JSON.parse(user);
+        
+        // تحديث اسم الهيدر عند إعادة تحميل الصفحة
+        document.getElementById('mainHeaderTitle').textContent = '✨ ' + u.fullName + ' - مؤسسة إنقاذ الطفل';
+
         if (u.role === 'مدير') { 
             document.getElementById('adminView').style.display = 'block'; 
             loadAdminResults(); 
         }
         else { 
             document.getElementById('studentView').style.display = 'block'; 
-            loadExams(); // تحميل تلقائي بناءً على صف الطالب
+            loadExams(); 
         }
     }
 };
