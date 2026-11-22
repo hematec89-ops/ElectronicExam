@@ -54,6 +54,7 @@
   
   #gradingModal {display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.7); z-index:1000; overflow-y:auto; padding:20px; backdrop-filter: blur(4px);}
   .modal-content {background:#fff; margin:0 auto; padding:24px; border-radius:24px; max-width:600px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);}
+  
   /* تنسيق الكسور الرياضية بشكل رأسي احترافي */
   .math-fraction {
       display: inline-flex;
@@ -63,10 +64,10 @@
       margin: 0 6px;
       line-height: 1.1;
       position: relative;
-      top: -4px; /* لضبط محاذاة الكسر مع النص */
+      top: -4px;
   }
   .math-num {
-      border-bottom: 2px solid #0f172a; /* الخط الفاصل */
+      border-bottom: 2px solid #0f172a;
       padding: 0 6px;
       width: 100%;
       text-align: center;
@@ -76,6 +77,7 @@
       width: 100%;
       text-align: center;
   }
+  
   /* شريط التقدم والمؤقت */
   .exam-header-sticky { position: sticky; top: 75px; background: #fff; z-index: 9; padding: 12px 16px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border: 2px solid #bae6fd;}
   .progress-container { flex: 1; margin-left: 10px; background: #e2e8f0; height: 14px; border-radius: 7px; overflow: hidden; position: relative;}
@@ -98,7 +100,6 @@
 
 <div id="mainApp" style="display:none;">
   <header>
-    <!-- تم إضافة ID لتغيير النص ديناميكياً -->
     <h1 id="mainHeaderTitle">✨ الاختبارات الإلكترونية - مؤسسة إنقاذ الطفل - فلسطين</h1>
     <button onclick="logout()" style="background:#ef4444; color:white; border:none; padding:8px 12px; border-radius:10px; font-weight:bold; font-family:'Cairo'; cursor:pointer;">خروج</button>
   </header>
@@ -118,12 +119,10 @@
     </div>
     
     <div id="examQuestionsContainer" style="display:none;">
-      <!-- شريط التقدم والمؤقت -->
       <div class="exam-header-sticky">
         <div class="progress-container">
           <div class="progress-bar" id="examProgressBar"></div>
         </div>
-        <!-- عداد الأسئلة المجابة -->
         <div class="progress-text" id="progressText">0 / 0</div>
         <div class="timer" id="examTimer">⏱️ 00:00</div>
       </div>
@@ -324,10 +323,42 @@ async function startExam() {
             currentQuestions = data.questions;
             renderQuestions();
             
+            // ✨ 1. استعادة الإجابات المحفوظة (في حال أغلق الطالب الصفحة وعاد)
+            const savedDraft = localStorage.getItem(`exam_draft_${user.fullName}_${currentExamId}`);
+            if (savedDraft) {
+                const draft = JSON.parse(savedDraft);
+                setTimeout(() => { 
+                    Object.keys(draft).forEach(idx => {
+                        if (currentQuestions[idx].options && currentQuestions[idx].options.length > 0) {
+                            const radio = document.querySelector(`input[name="q_${idx}"][value="${draft[idx]}"]`);
+                            if (radio) { radio.checked = true; radio.closest('.q-item').classList.add('answered'); }
+                        } else {
+                            const txt = document.getElementById(`q_${idx}`);
+                            if (txt) { txt.value = draft[idx]; txt.closest('.q-item').classList.add('answered'); }
+                        }
+                    });
+                    updateProgressBar();
+                }, 100);
+            }
+
             totalValidQuestions = currentQuestions.filter(q => q.qNo !== 'نص').length;
             updateProgressBar();
             
-            examTimeLeft = duration * 60;
+            // ✨ 2. حساب الوقت المتبقي الحقيقي (حتى لو انقطعت الكهرباء)
+            const savedEndTime = localStorage.getItem(`exam_endtime_${user.fullName}_${currentExamId}`);
+            if (savedEndTime) {
+                examTimeLeft = Math.max(0, Math.floor((parseInt(savedEndTime) - Date.now()) / 1000));
+            } else {
+                examTimeLeft = duration * 60;
+                localStorage.setItem(`exam_endtime_${user.fullName}_${currentExamId}`, Date.now() + (examTimeLeft * 1000));
+            }
+            
+            if (examTimeLeft <= 0) {
+                toast('⌛ لقد انتهى وقت هذا الاختبار مسبقاً!');
+                submitExam(true);
+                return;
+            }
+
             startTimer();
 
             document.getElementById('examListCard').style.display = 'none';
@@ -385,11 +416,9 @@ function updateProgressBar() {
         }
     });
     
-    // تحديث شريط التقدم الأخضر
     const percentage = totalValidQuestions > 0 ? (answeredCount / totalValidQuestions) * 100 : 0;
     document.getElementById('examProgressBar').style.width = percentage + '%';
     
-    // تحديث عداد النص بجانب الشريط (الأسئلة المجابة / إجمالي الأسئلة)
     let progressStr = `${answeredCount} / ${totalValidQuestions}`;
     if (isMathExam) progressStr = toArabicNumerals(progressStr);
     document.getElementById('progressText').textContent = progressStr;
@@ -436,11 +465,31 @@ function markAsAnswered(element) {
     const qItem = element.closest('.q-item');
     if (qItem) qItem.classList.add('answered');
     updateProgressBar();
+    
+    // ✨ حفظ الإجابات في ذاكرة الهاتف فوراً
+    saveDraftAnswers(); 
+}
+
+// دالة حفظ الإجابات مؤقتاً
+function saveDraftAnswers() {
+    const user = JSON.parse(localStorage.getItem('exam_user'));
+    if(!user) return;
+    let draftAnswers = {};
+    currentQuestions.forEach((q, idx) => {
+        if (q.qNo === 'نص') return;
+        if (q.options && q.options.length > 0) {
+            const sel = document.querySelector(`input[name="q_${idx}"]:checked`);
+            if (sel) draftAnswers[idx] = sel.value;
+        } else {
+            const txt = document.getElementById(`q_${idx}`);
+            if (txt && txt.value.trim() !== '') draftAnswers[idx] = txt.value.trim();
+        }
+    });
+    localStorage.setItem(`exam_draft_${user.fullName}_${currentExamId}`, JSON.stringify(draftAnswers));
 }
 
 // دالة تحويل الكسور (تدعم الأرقام العربية والإنجليزية)
 function formatMathFractions(text) {
-    // يبحث عن أي أرقام بينهما شرطة مائلة /
     return text.replace(/([0-9٠-٩]+)\s*\/\s*([0-9٠-٩]+)/g, function(match, num, den) {
         return `<span class="math-fraction"><span class="math-num">${num}</span><span class="math-den">${den}</span></span>`;
     });
@@ -452,15 +501,11 @@ function renderQuestions() {
     let currentPassage = ''; 
 
     currentQuestions.forEach((q, idx) => {
-        // 1. نطبق تحويل الكسور أولاً على النص الأصلي
         let qText = formatMathFractions(q.text);
-        
-        // 2. ثم نحول الأرقام إلى هندية إذا كان الاختبار رياضيات
         qText = isMathExam ? toArabicNumerals(qText) : qText;
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let grade = isMathExam ? toArabicNumerals(q.grade) : q.grade;
 
-        // تحويل الشرطة السفلية إلى خط
         qText = qText.replace(/_([^_]+)_/g, '<u>$1</u>');
 
         let ltrAttr = isEnglishExam ? 'dir="ltr" style="text-align: left;"' : '';
@@ -490,7 +535,6 @@ function renderQuestions() {
         let input = '';
         if (q.options && q.options.length > 0) {
             input = q.options.map(opt => {
-                // تطبيق تحويل الكسور على الخيارات أيضاً
                 let optText = formatMathFractions(opt);
                 optText = isMathExam ? toArabicNumerals(optText) : optText;
                 optText = optText.replace(/_([^_]+)_/g, '<u>$1</u>');
@@ -554,8 +598,9 @@ async function submitExam(isAutoSubmit = false) {
         return { qNo: q.qNo, answer: ans };
     }).filter(a => a !== null);
 
+    // حفظ نسخة احتياطية من الإجابات في حال انقطع النت
     const offlineData = { examId: currentExamId, examName: currentExamName, studentName: user.fullName, answers, timestamp: new Date().toISOString() };
-    localStorage.setItem('offline_exam_backup', JSON.stringify(offlineData));
+    localStorage.setItem(`offline_exam_backup_${user.fullName}`, JSON.stringify(offlineData));
 
     const btn = document.querySelector('#examQuestionsContainer .btn-primary');
     if (btn) {
@@ -571,7 +616,11 @@ async function submitExam(isAutoSubmit = false) {
         });
         const data = await r.json();
         if (data.ok) {
-            localStorage.removeItem('offline_exam_backup');
+            // مسح المسودات والوقت بعد التسليم الناجح
+            localStorage.removeItem(`offline_exam_backup_${user.fullName}`);
+            localStorage.removeItem(`exam_endtime_${user.fullName}_${currentExamId}`);
+            localStorage.removeItem(`exam_draft_${user.fullName}_${currentExamId}`);
+
             document.getElementById('examQuestionsContainer').style.display = 'none';
             document.getElementById('examResultContainer').style.display = 'block';
             
@@ -779,7 +828,6 @@ window.onload = () => {
         document.getElementById('mainApp').style.display = 'block';
         const u = JSON.parse(user);
         
-        // تحديث اسم الهيدر عند إعادة تحميل الصفحة
         document.getElementById('mainHeaderTitle').textContent = '✨ ' + u.fullName + ' - مؤسسة إنقاذ الطفل';
 
         if (u.role === 'مدير') { 
@@ -792,6 +840,51 @@ window.onload = () => {
         }
     }
 };
+
+// ==========================================
+// 8. نظام المزامنة التلقائية (عند عودة الإنترنت)
+// ==========================================
+window.addEventListener('online', async () => {
+    const user = JSON.parse(localStorage.getItem('exam_user'));
+    if (!user) return;
+
+    toast('🌐 عاد الاتصال بالإنترنت، جاري التحقق من الإجابات المعلقة...');
+    
+    const backupKey = `offline_exam_backup_${user.fullName}`;
+    const offlineData = localStorage.getItem(backupKey);
+    
+    if (offlineData) {
+        const data = JSON.parse(offlineData);
+        try {
+            const r = await fetch(API_URL, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                body: JSON.stringify({
+                    action: 'submitExam', 
+                    examId: data.examId, 
+                    examName: data.examName, 
+                    studentName: data.studentName, 
+                    answers: data.answers
+                }) 
+            });
+            const res = await r.json();
+            if (res.ok) {
+                // مسح البيانات من الهاتف بعد نجاح المزامنة
+                localStorage.removeItem(backupKey);
+                localStorage.removeItem(`exam_endtime_${user.fullName}_${data.examId}`);
+                localStorage.removeItem(`exam_draft_${user.fullName}_${data.examId}`);
+                toast('✅ تم رفع الإجابات المعلقة بنجاح إلى المعلم!');
+                
+                // تحديث الشاشة إذا كان الطالب في صفحة النتيجة
+                if(document.getElementById('examResultContainer').style.display === 'block') {
+                    document.getElementById('examResultMsg').textContent = res.message;
+                }
+            }
+        } catch(e) { 
+            console.log('فشل المزامنة التلقائية، سيتم المحاولة لاحقاً', e); 
+        }
+    }
+});
 </script>
 </body>
 </html>
