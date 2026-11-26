@@ -285,10 +285,8 @@ async function startExam() {
     
     // تحديث اسم الهيدر ليشمل اسم الاختبار بجانب اسم الطفل
     document.getElementById('mainHeaderTitle').textContent = `✨ ${user.fullName} - ${currentExamName}`;
-
-    isMathExam = currentExamId === 'E3' || currentExamId === 'E4'; 
-    isEnglishExam = currentExamId === 'E5' || currentExamId === 'E6';  
-    
+    isMathExam = currentExamId === 'E3' || currentExamId === 'E4' || currentExamId === 'E8'; 
+    isEnglishExam = currentExamId === 'E5' || currentExamId === 'E6' || currentExamId === 'E7';  
     const btn = event.target;
     const originalText = btn.textContent;
     btn.textContent = 'جاري التحقق...';
