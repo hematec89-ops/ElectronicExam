@@ -162,6 +162,7 @@ function toast(msg) {
 
 // دالة تحويل الأرقام إلى هندية
 function toArabicNumerals(str) {
+    if (str === null || str === undefined) return '';
     const arabicNumbers = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
     return String(str).replace(/[0-9]/g, function(w) {
         return arabicNumbers[+w];
@@ -488,8 +489,11 @@ function saveDraftAnswers() {
     localStorage.setItem(`exam_draft_${user.fullName}_${currentExamId}`, JSON.stringify(draftAnswers));
 }
 
+// تم تحصين هذه الدالة لمنع خطأ text.replace
 function formatMathFractions(text) {
-    return text.replace(/([0-9٠-٩]+)\s*\/\s*([0-9٠-٩]+)/g, function(match, num, den) {
+    if (text === null || text === undefined) return '';
+    const str = String(text);
+    return str.replace(/([0-9٠-٩]+)\s*\/\s*([0-9٠-٩]+)/g, function(match, num, den) {
         return `<span class="math-fraction"><span class="math-num">${num}</span><span class="math-den">${den}</span></span>`;
     });
 }
@@ -500,8 +504,11 @@ function renderQuestions() {
     let currentPassage = ''; 
 
     currentQuestions.forEach((q, idx) => {
-        let qText = formatMathFractions(q.text);
+        // تحصين النص ليكون String دائماً
+        let qText = String(q.text || ''); 
+        qText = formatMathFractions(qText);
         qText = isMathExam ? toArabicNumerals(qText) : qText;
+        
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let grade = isMathExam ? toArabicNumerals(q.grade) : q.grade;
 
@@ -534,7 +541,9 @@ function renderQuestions() {
         let input = '';
         if (q.options && q.options.length > 0) {
             input = q.options.map(opt => {
-                let optText = formatMathFractions(opt);
+                // تحصين الخيارات لتكون String دائماً
+                let optText = String(opt || '');
+                optText = formatMathFractions(optText);
                 optText = isMathExam ? toArabicNumerals(optText) : optText;
                 optText = optText.replace(/_([^_]+)_/g, '<u>$1</u>');
                 
@@ -660,7 +669,7 @@ document.getElementById('btnDownloadPdf').addEventListener('click', async () => 
             studentAns = document.getElementById(`q_${idx}`).value.trim() || 'لم يجب';
         }
         
-        let qText = isMathExam ? toArabicNumerals(q.text) : q.text;
+        let qText = isMathExam ? toArabicNumerals(String(q.text || '')) : String(q.text || '');
         let qNo = isMathExam ? toArabicNumerals(q.qNo) : q.qNo;
         let sAns = isMathExam ? toArabicNumerals(studentAns) : studentAns;
 
